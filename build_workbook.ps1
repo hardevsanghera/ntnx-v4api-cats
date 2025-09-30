@@ -1,52 +1,7 @@
 <#
-Copied from new3gemenips.ps1 and enhanced to resolve Category extIds to key/value pairs
-Adds Resolve-CategoryMappings function and calls it after saving the API response
+
 #>
 
-<#
-WORKBOOK OUTPUT BEHAVIOR
-------------------------
-This script produces an Excel workbook in .\scratch named either:
-        cat_map.xlsx            (default)
-        cat_map_<timestamp>.xlsx (when -TimestampExcel is used)
-
-It ALWAYS deletes any existing target workbook before writing (see the
-"Start fresh each run" Remove-Item block). This guarantees there are no
-leftover / legacy worksheets (e.g. an old "VM Categories" sheet created by
-previous versions). As a result, only the sheets written in the current run
-will exist.
-
-Sheets written (using ImportExcel's Export-Excel):
-    1. VMCategories  - Main VM -> categories mapping (wide if -SplitCategories). Column order now:
-             Name, VM extId, <category key columns...>  (or Name, VM extId, Categories in legacy mode)
-    2. AllCategories - Complete list of category definitions (Category, Value, extID)
-                                         Only added if at least one category definition was resolved.
-
-Export-Excel Notes:
-    - Export-Excel does NOT support a -Force switch; file overwrite is handled by
-        prior deletion of the workbook.
-    - First call (VMCategories) creates the workbook; second call (AllCategories)
-        uses -Append to add a sheet.
-    - If in the future you want to preserve other custom sheets, remove the
-        deletion block and instead use -ClearSheet to refresh just the target sheet(s).
-
-Parameters of interest:
-    -SplitCategories   Produces a column per unique category key.
-    -TimestampExcel    Adds a timestamp to the workbook filename to retain history.
-
-To change behavior (examples):
-    * Keep workbook & only refresh VMCategories:
-                # Remove the Remove-Item block; then
-                Export-Excel -Path $excelPath -WorksheetName 'VMCategories' -ClearSheet ...
-    * Add more metadata sheets: perform additional Export-Excel -Append calls after the two core sheets.
-
-Any modifications to sheet naming or ordering should be reflected here to keep
-documentation accurate.
-#>
-
-# ...existing code...
-
-# We'll load the original script dynamically to reuse its logic up to saving the API response.
 function Resolve-CategoryMappings {
     param(
         [string]$VmJsonPath =       "$PWD\scratch\vm_list.json",

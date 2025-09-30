@@ -1,23 +1,6 @@
 <#
-.SYNOPSIS
-    This script demonstrates how to call a REST API with Basic Authentication in PowerShell.
 
-.DESCRIPTION
-    This script is for educational purposes only. It is not intended for production use with the provided placeholder values.
-    It shows how to construct an API call to a Nutanix Prism Central endpoint using Basic Authentication.
-    The script uses placeholders for the base URL, username, and password, which must be replaced with
-    secure credentials and your specific environment details.
-
-.NOTES
-    - This script uses PowerShell 7 features.
-    - It ignores certificate validation for demonstration purposes, which is a security risk in production.
-    - The output is formatted as JSON.
 #>
-
-# JSON query: $.data[?(@.$objectType == 'vmm.v4.ahv.config.Vm')].name to get bacl name for VMs
-# https://www.jsonquerytool.com/
-# JSON Query for specific extId: $.data[?(@.$objectType == 'prism.v4.config.Category' && @.extId == '925917f7-3095-3376-bf04-8d2224c97515')]
-# JSON Query: $.data[?(@.$objectType == 'prism.v4.config.Category' && @.key == 'HARDEVCAT')]
 
 # --- API Configuration (loaded from vars.txt) ---
 # Read variables from vars.txt file in the files folder

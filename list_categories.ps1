@@ -1,6 +1,5 @@
 <#
 Simple script to fetch categories from Prism Central and save JSON to .\scratch\categories.json
-Created as a copy/simplified variant of new3gemenips.ps1 per user request.
 #>
 
 # --- API Configuration (loaded from vars.txt) ---

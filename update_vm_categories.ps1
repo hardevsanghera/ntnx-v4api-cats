@@ -1,25 +1,5 @@
 #!/usr/bin/env pwsh
-<#+
-update_vm_categories_beta.ps1 (PowerShell 7)
-
-Replicates logic of update_vmcategories.py (Option B relocated):
-  * Reads workbook (default: scratch/VMsToUpdate-PROD.xlsx)
-  * Sheets required: ToUpdate, VMCategories, AllCategories
-  * For each row in ToUpdate:
-       - Validate (VM Name, VM extId) exists exactly once in VMCategories
-       - Parse UPDATE WITH CATEGORIES (comma-separated Category=Value pairs)
-       - Validate each Category=Value exists in AllCategories
-       - Resolve category UUID (extID/extId column) for each Category=Value
-       - Write unique comma-separated category UUID list into 'Category UUID(s)' column on same ToUpdate row
-       - Write status column 'VM Name/extId & Category exId(s) Match' with:
-             OK (bold white on green) or Mismatch (bold white on light red)
-  * --IgnoreCase performs case-insensitive comparisons
-  * --DryRun performs no write
-
-Exit codes:
-  0 success (all rows OK or skipped)
-  1 mismatches encountered
-  2 fatal error (missing file/sheet/module)
+<#
 
 Requires: ImportExcel module.
 #>
