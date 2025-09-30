@@ -53,7 +53,7 @@ function Resolve-CategoryMappings {
         [string]$CategoryJsonPath = "$PWD\scratch\categories.json",
         [string]$OutCsvPath =       "$PWD\scratch\vm_categories.csv",
         [switch]$SplitCategories = $true,                # if set, write separate columns per category key
-        [switch]$TimestampExcel = $false                  # if set, append timestamp to Excel filename
+        [switch]$TimestampExcel = $false                 # if set, append timestamp to Excel filename
     )
 
     if (-not (Test-Path $VmJsonPath)) {
