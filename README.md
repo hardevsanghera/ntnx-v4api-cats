@@ -1,36 +1,123 @@
-# ntnx-v4api-cats
-Use Windows Powershell (and 1 python script) to add/update Categories to a VM(s) via Microsoft Excel.
-The target environment is Nutanix clusters with the AHV hypervisor using REST with 
-the v4 APIs.
+# 🏷️ Nutanix v4 API Categories Management
 
-You will need Microsoft Excel installed on your workstation as the COM thingy is used.
+> **Automate VM category management using PowerShell, Python, and Microsoft Excel with Nutanix v4 APIs**
 
-The objective here is to "educate" on the use of REST calls and Nutanix v4 APIs with the use of
-Microsoft Excel to aid as an automation hack.  It's not necessarily best practice and the workflows
-can certainly be consolidated, however the separate script approach does break down the "curve
-of understanding".
+## 📋 Overview
 
-The original goal was to create Powershell 7 scripts only, however I could not get
-Powershell to consistently make successful POST calls, in Python I could, so that's why there's a single
-Python script.
+This project provides a collection of scripts to manage VM categories in Nutanix environments through REST API calls. It combines PowerShell automation with Excel integration to create an educational workflow for understanding Nutanix v4 API interactions.
 
+## 🎯 Objectives
 
-**NOTE: These scripts use plain-text passwords, feel free to change that! ***
+- **Educational Focus**: Demonstrate REST API usage with Nutanix v4 APIs
+- **Excel Integration**: Leverage Microsoft Excel as an automation interface
+- **Workflow Breakdown**: Separate scripts to reduce the learning curve
+- **Practical Implementation**: Real-world category management scenarios
 
-Educational document re: REST and APIs <code_dir>\files\educate.pdf
+## 🏗️ Architecture
 
-Usage:
-    1. Edit <code_dir>\files\vars.txt to point to your Prism Central (PC), note plain-text password
-    2. Run <code_dir>\list_vms.ps1 (writes output to console and <code_dir>\scratch)
-    3. Run <code_dir>\list_categories.ps1 (writes output to console and <code_dir>\scratch)
-    4. Run <code_dir>\build_workbook.ps1 (writes output to console and <code_dir>\scratch)
-    5. Run <code_dir>\build_workbook.ps1 (writes output to console and <code_dir>\scratch), notably VMsToUpdate.xlsx
-    6. Open the <code_dir>\VMsToUpdate.xlsx with Excel and then populate the "ToUpdate" sheet to add:
-        VM Name, VM extID, Categories to associate with the VM
-       Save and CLOSE the workbook
-    7. Run <code_dir>\update_vm_categories_for_vm.py
-       This will write output to console and update <code_dir>\VMsToUpdate.xlsx with the status of the category associations.
-    8. Open <code_dir>\VMsToUpdate.xlsx and examine
+- **Target Environment**: Nutanix clusters with AHV hypervisor
+- **API Version**: Nutanix v4 REST APIs  
+- **Primary Language**: PowerShell 7
+- **Secondary Language**: Python (for reliable POST operations)
+- **Interface**: Microsoft Excel via COM automation
 
-hardev@nutanix.com
-Oct '25
+## ⚠️ Prerequisites
+
+- ✅ **Microsoft Excel** installed (COM interop required)
+- ✅ **PowerShell 7** (pwsh)
+- ✅ **Python 3.x** (for update operations)
+- ✅ **Nutanix Prism Central** access
+- ⚠️ **Security Note**: Scripts use plain-text passwords - modify for production use
+
+## 📚 Documentation
+
+📖 **Educational Resource**: [`files/educate.pdf`](files/educate.pdf) - REST and APIs fundamentals
+
+## 🚀 Quick Start
+
+### Step 1: Configuration
+```powershell
+# Edit configuration file with your Prism Central details
+notepad files\vars.txt
+```
+
+### Step 2: Data Collection
+```powershell
+# Collect VM information
+.\list_vms.ps1
+
+# Collect category definitions  
+.\list_categories.ps1
+```
+
+### Step 3: Build Workbook
+```powershell
+# Generate Excel workbook with VM-category mappings
+.\build_workbook.ps1
+```
+
+### Step 4: Excel Operations
+1. Open `VMsToUpdate.xlsx` in Microsoft Excel
+2. Navigate to the **"ToUpdate"** sheet
+3. Add entries with:
+   - **VM Name**
+   - **VM extID** 
+   - **Categories** to associate
+4. **Save and close** the workbook
+
+### Step 5: Apply Updates
+```python
+# Execute category updates via Python
+python update_vm_categories_for_vm.py
+```
+
+### Step 6: Review Results
+Open `VMsToUpdate.xlsx` to examine the status of category associations.
+
+## 📁 Project Structure
+
+```
+ntnx-v4api-cats/
+├── 📄 README.md                      # This documentation
+├── 📄 list_vms.ps1                   # VM discovery script
+├── 📄 list_categories.ps1            # Category enumeration script  
+├── 📄 build_workbook.ps1             # Excel workbook generator
+├── 📄 update_vm_categories.ps1       # PowerShell update script
+├── 🐍 update_categories_for_vm.py    # Python update script
+├── 📂 files/
+│   ├── 📄 vars.txt                   # Configuration file
+│   ├── 📄 requirements.txt           # Python dependencies
+│   ├── 📊 VMsToUpdate_SKEL.xlsx      # Excel template
+│   └── 📖 educate.pdf               # Educational documentation
+└── 📂 scratch/                       # Output directory
+    ├── 📄 vm_list.json               # VM data export
+    ├── 📄 categories.json            # Category definitions
+    └── 📊 cat_map.xlsx               # Category mappings
+```
+
+## 🔧 Technical Notes
+
+- **PowerShell Limitation**: Inconsistent POST call behavior led to Python implementation for updates
+- **COM Integration**: Excel automation requires local Microsoft Office installation
+- **Output Locations**: All generated files are saved to `scratch/` directory
+- **API Approach**: Educational focus prioritizes clarity over optimization
+
+## 👨‍💻 Author
+
+**Hardev Sanghera** - [hardev@nutanix.com](mailto:hardev@nutanix.com)
+
+*October 2025*
+
+---
+
+## 🤝 Contributing
+
+This project is designed for educational purposes. Feel free to:
+- 🍴 Fork the repository
+- 🔧 Customize scripts for your environment  
+- 📝 Improve documentation
+- 🛡️ Enhance security implementations
+
+## 📄 License
+
+This project is provided "AS IS" for educational purposes. Use at your own risk.
