@@ -1,13 +1,35 @@
 <#
-consolidate_workbook.ps1
+.SYNOPSIS
+    Script Name: consolidate_workbook.ps1
+    Author: hardev@nutanix.com + Co-Pilot
+    Date: October 2025
+    Version: 1.0
 
-PowerShell 7 script that:
-1) Opens $PWD\files\VMsToUpdate_SKEL.xlsx
-2) Appends all sheets from $PWD\scratch\cat_map.xlsx into the opened workbook
-3) Saves the updated workbook to $PWD\scratch\VMsToUpdate-YYYY-MM-DD-HH-mm.xlsx (timestamped)
-4) Closes all files and quits Excel
+.DESCRIPTION
+    Simple script to fetch categories from Prism Central and save JSON to .\scratch\categories.json
+    PowerShell 7 script that:
+        1) Opens $PWD\files\VMsToUpdate_SKEL.xlsx
+        2) Appends all sheets from $PWD\scratch\cat_map.xlsx into the opened workbook
+        3) Saves the updated workbook to $PWD\scratch\VMsToUpdate.xlsx (don't use the timestamp switch)
+        4) Closes all files and quits Excel
 
 Requires: Windows with Excel installed (uses COM interop). Run with PowerShell 7 (pwsh).
+    
+    NB:
+    This script is provided "AS IS" without warranty of any kind.
+    Use of this script is at your own risk. 
+    The author(s) make no representations or warranties, express or implied, 
+    regarding the script’s functionality, fitness for a particular purpose, 
+    or reliability. 
+
+    By using this script, you agree that you are solely responsible 
+    for any outcomes, including loss of data, system issues, or 
+    other damages that may result from its execution. 
+    No support or maintenance is provided.
+
+.NOTES
+    You may copy, edit, customize and use as needed. Test thoroughly in a safe environment 
+    before deploying to production systems.
 #>
 
 try {

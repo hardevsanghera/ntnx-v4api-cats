@@ -1,5 +1,30 @@
 <#
+.SYNOPSIS
+    Script Name: list_vms.ps1
+    Author: hardev@nutanix.com + Co-Pilot
+    Date: October 2025
+    Version: 1.0
 
+.DESCRIPTION
+    This script retrieves a list of VMs from a Nutanix cluster using the REST API,
+    saves the response to a JSON file, and creates a mapping of VM names to their extIds.
+    The mapping is printed to the console and also saved to a CSV file.
+    
+    NB:
+    This script is provided "AS IS" without warranty of any kind.
+    Use of this script is at your own risk. 
+    The author(s) make no representations or warranties, express or implied, 
+    regarding the script’s functionality, fitness for a particular purpose, 
+    or reliability. 
+
+    By using this script, you agree that you are solely responsible 
+    for any outcomes, including loss of data, system issues, or 
+    other damages that may result from its execution. 
+    No support or maintenance is provided.
+
+.NOTES
+    You may copy, edit, customize and use as needed. Test thoroughly in a safe environment 
+    before deploying to production systems.
 #>
 
 # --- API Configuration (loaded from vars.txt) ---

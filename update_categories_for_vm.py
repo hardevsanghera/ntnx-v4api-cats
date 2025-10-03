@@ -1,9 +1,29 @@
 #!/usr/bin/env python3
 """
-update_categories_for_vm.py
+SYNOPSIS:
+    Script Name: update_categories_for_vm.py
+    Author: hardev@nutanix.com + Co-Pilot
+    Date: October 2025
+    Version: 1.0
+    Purpose:
+    A script to update VM categories using Nutanix API v4 REST calls.
+    Reads configuration from vars.txt and processes VMs from an Excel file.
 
-A script to update VM categories using Nutanix API v4 REST calls.
-Reads configuration from vars.txt and processes VMs from an Excel file.
+NB:
+    This script is provided "AS IS" without warranty of any kind.
+    Use of this script is at your own risk.
+    The author(s) make no representations or warranties, express or implied,
+    regarding the script’s functionality, fitness for a particular purpose,
+    or reliability.
+
+    By using this script, you agree that you are solely responsible
+    for any outcomes, including loss of data, system issues, or
+    other damages that may result from its execution.
+    No support or maintenance is provided.
+
+NOTES:
+    You may copy, edit, customize and use as needed.
+    Test thoroughly in a safe environment before deploying to production systems.
 """
 
 import os

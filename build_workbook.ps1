@@ -1,5 +1,32 @@
 <#
+.SYNOPSIS
+    Script Name: build_workbook.ps1
+    Author: hardev@nutanix.com + Co-Pilot
+    Date: October 2025
+    Version: 1.0
 
+.DESCRIPTION
+    This script processes Nutanix v4 API VM and category data to create comprehensive reports
+    It reads JSON files containing VM configurations and category definitions from the scratch directory
+    Outputs include CSV files and Excel workbooks with VM-to-category mappings for analysis and management
+
+    Requires: Windows with Excel installed (uses COM interop). Run with PowerShell 7 (pwsh).
+    
+    NB:
+    This script is provided "AS IS" without warranty of any kind.
+    Use of this script is at your own risk. 
+    The author(s) make no representations or warranties, express or implied, 
+    regarding the script’s functionality, fitness for a particular purpose, 
+    or reliability. 
+
+    By using this script, you agree that you are solely responsible 
+    for any outcomes, including loss of data, system issues, or 
+    other damages that may result from its execution. 
+    No support or maintenance is provided.
+
+.NOTES
+    You may copy, edit, customize and use as needed. Test thoroughly in a safe environment 
+    before deploying to production systems.
 #>
 
 function Resolve-CategoryMappings {
@@ -7,7 +34,7 @@ function Resolve-CategoryMappings {
         [string]$VmJsonPath =       "$PWD\scratch\vm_list.json",
         [string]$CategoryJsonPath = "$PWD\scratch\categories.json",
         [string]$OutCsvPath =       "$PWD\scratch\vm_categories.csv",
-        [switch]$SplitCategories = $true,                # if set, write separate columns per category key
+        [switch]$SplitCategories = $true,                # if set, write separate columns per category key DO NOT CHANGE THIS from $true
         [switch]$TimestampExcel = $false                 # if set, append timestamp to Excel filename
     )
 
