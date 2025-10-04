@@ -64,9 +64,9 @@ notepad files\vars.txt
    - **VM extID** 
    - **Categories** to associate
 4. **Save and close** the workbook
-Screenshot, the "ToUpdate" sheet when first opened:
+<p>Screenshot, the "ToUpdate" sheet when first opened:
 <img src="files/new_sheet.png" alt="Fresh" width="500">
-Screenshot, now with VM, extID, Update Categories
+<p>Screenshot, now with VM, extID, Update Categories
 <img src="files/1st_params.png" alt="1st set of paramters for validation" width="500">
 
 ### Step 5: Validate category update parameters
@@ -77,7 +77,7 @@ Screenshot, now with VM, extID, Update Categories
 
 ### Step 6: Review Results
 Open `VMsToUpdate.xlsx` to examine the status of the parameter validations.
-Screenshot, the "ToUpdate" sheet with validated parameters:
+<p>Screenshot, the "ToUpdate" sheet with validated parameters:
 <img src="files/validation_status.png" alt="Status of validations" width="500">
 
 ### Step 7: Apply Updates
@@ -88,7 +88,7 @@ python update_vm_categories_for_vm.py
 
 ### Step 8: Review Results
 Open `VMsToUpdate.xlsx` to examine the status of category associations.
-Screenshot, the "ToUpdate" sheet with status of the VM update:
+<p>Screenshot, the "ToUpdate" sheet with status of the VM update:
 <img src="files/vm_update.png" alt="Status of VM updates" width="500">
 
 ## 📁 Project Structure
@@ -105,7 +105,7 @@ ntnx-v4api-cats/
 │   ├── 📄 vars.txt                   # Configuration file
 │   ├── 📄 requirements.txt           # Python dependencies
 │   ├── 📊 VMsToUpdate_SKEL.xlsx      # Excel template
-│   └── 📖 educate.pdf               # Educational documentation
+│   └── 📖 educate.pdf                # Educational documentation
 └── 📂 scratch/                       # Output directory
     ├── 📄 vm_list.json               # VM data export
     ├── 📄 categories.json            # Category definitions
