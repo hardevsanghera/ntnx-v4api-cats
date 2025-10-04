@@ -1,4 +1,4 @@
-# 🏷️ Nutanix v4 API Categories Management
+# 🏷️ Nutanix v4 APIs: Working with Categories via Microsoft Excel
 
 > **Automate VM category management using PowerShell, Python, and Microsoft Excel with Nutanix v4 APIs**
 
