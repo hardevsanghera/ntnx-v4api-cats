@@ -64,6 +64,10 @@ notepad files\vars.txt
    - **VM extID** 
    - **Categories** to associate
 4. **Save and close** the workbook
+Screenshot, the "ToUpdate" sheet when first opened:
+<img src="files/excel1.png" alt="REST Slide" width="500">
+Screenshot, now with VM, extID, Update Categories
+<img src="files/excel2.png" alt="REST Slide" width="500">
 
 ### Step 5: Validate category update parameters
 ```powershell
@@ -72,7 +76,9 @@ notepad files\vars.txt
 ```
 
 ### Step 6: Review Results
-Open `VMsToUpdate.xlsx` to examine the status of the paramter validations.
+Open `VMsToUpdate.xlsx` to examine the status of the parameter validations.
+Screenshot, the "ToUpdate" sheet with validated parameters:
+<img src="files/excel3.png" alt="REST Slide" width="500">
 
 ### Step 7: Apply Updates
 ```python
@@ -82,6 +88,8 @@ python update_vm_categories_for_vm.py
 
 ### Step 8: Review Results
 Open `VMsToUpdate.xlsx` to examine the status of category associations.
+Screenshot, the "ToUpdate" sheet with status of the VM update:
+<img src="files/excel4.png" alt="REST Slide" width="500">
 
 ## 📁 Project Structure
 
