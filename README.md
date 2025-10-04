@@ -65,13 +65,22 @@ notepad files\vars.txt
    - **Categories** to associate
 4. **Save and close** the workbook
 
-### Step 5: Apply Updates
-```python
-# Execute category updates via Python
-python update_vm_categories_for_vm.py
+### Step 5: Validate category update parameters
+```powershell
+# Validate parameters
+.\update_vm_categories.ps1
 ```
 
 ### Step 6: Review Results
+Open `VMsToUpdate.xlsx` to examine the status of the paramter validations.
+
+### Step 7: Apply Updates
+```python
+# Execute category updates via PYTHON
+python update_vm_categories_for_vm.py
+```
+
+### Step 8: Review Results
 Open `VMsToUpdate.xlsx` to examine the status of category associations.
 
 ## 📁 Project Structure
