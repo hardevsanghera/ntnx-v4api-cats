@@ -27,7 +27,7 @@ This project provides a collection of scripts to manage VM categories in Nutanix
 - ✅ **PowerShell 7** (pwsh)
 - ✅ **Python 3.x** (for update operations)
 - ✅ **Nutanix Prism Central** access
-- ⚠️ **Security Note**: Scripts use plain-text passwords - modify for production use
+- ⚠️ **Security Note**: Scripts a) use plain-text passwords b) do not check SSL certificates - modify both for production use
 
 ## 📚 Documentation
 
