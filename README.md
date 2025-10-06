@@ -97,8 +97,8 @@ For the `update_categories_for_vm.py` script, set up a Python virtual environmen
 
 ### Step 1: Create Virtual Environment
 ```powershell
-# Navigate to the project directory
-cd C:\Users\hardev.sanghera\Documents\ntnx-v4api-cats
+# Navigate to the project directory, for example
+cd C:\Users\me\Documents\ntnx-v4api-cats
 
 # Create a virtual environment
 python -m venv .venv
