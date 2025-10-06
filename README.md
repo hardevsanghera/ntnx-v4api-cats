@@ -80,7 +80,7 @@ Open `VMsToUpdate.xlsx` to examine the status of the parameter validations.
 <p>Screenshot, the "ToUpdate" sheet with validated parameters:
 <img src="files/validation_status.png" alt="Status of validations" width="500">
 
-### Step 7: Apply Updates
+### Step 7: Apply Updates - see "Python Virtual Environment Setup" below
 ```python
 # Execute category updates via PYTHON
 python update_vm_categories_for_vm.py
@@ -91,7 +91,58 @@ Open `VMsToUpdate.xlsx` to examine the status of category associations.
 <p>Screenshot, the "ToUpdate" sheet with status of the VM update:
 <img src="files/vm_update.png" alt="Status of VM updates" width="500">
 
-## 📁 Project Structure
+## � Python Virtual Environment Setup
+
+For the `update_categories_for_vm.py` script, set up a Python virtual environment:
+
+### Step 1: Create Virtual Environment
+```powershell
+# Navigate to the project directory
+cd C:\Users\hardev.sanghera\Documents\ntnx-v4api-cats
+
+# Create a virtual environment
+python -m venv .venv
+```
+
+### Step 2: Activate Virtual Environment
+```powershell
+# Activate the virtual environment (PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# Alternative for Command Prompt
+# .\.venv\Scripts\activate.bat
+```
+
+### Step 3: Install Dependencies
+```powershell
+# Install packages from the requirements file
+pip install -r files\requirements.txt
+```
+
+### Step 4: Verify Installation
+```powershell
+# Check installed packages
+pip list
+
+# Verify Python is using the virtual environment
+where python
+```
+
+### Step 5: Run the Script
+```powershell
+# With virtual environment activated
+python update_categories_for_vm.py
+
+# Or specify the full path to the virtual environment's Python
+.\.venv\Scripts\python.exe update_categories_for_vm.py
+```
+
+### Step 6: Deactivate Virtual Environment (when done)
+```powershell
+deactivate
+```
+
+## �📁 Project Structure
 
 ```
 ntnx-v4api-cats/
