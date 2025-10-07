@@ -890,6 +890,7 @@ if ($repositoryAvailable -and (Test-CommandExists "code")) {
         $launchJson | Set-Content -Path $launchPath -Encoding UTF8
         Write-Success "VS Code launch configuration created at: $launchPath"
         
+        <# Commented out - VS Code tasks creation
         # Create tasks.json for PowerShell scripts
         $tasksPath = Join-Path $vscodeDir "tasks.json"
         $tasksConfig = @{
@@ -977,6 +978,7 @@ if ($repositoryAvailable -and (Test-CommandExists "code")) {
         $tasksJson = $tasksConfig | ConvertTo-Json -Depth 5
         $tasksJson | Set-Content -Path $tasksPath -Encoding UTF8
         Write-Success "VS Code tasks configuration created at: $tasksPath"
+        #>
         
         # Install recommended extensions
         Write-Info "Installing recommended VS Code extensions..."
@@ -1191,10 +1193,10 @@ Repository Status: $(if (Test-Path $RepositoryPath) { "Ready" } else { "Setup re
 Next: Configure files\vars.txt and follow the README.md workflow
 "@
 
-$summaryPath = Join-Path $RepositoryPath "setup-summary.txt"
+$summaryPath = Join-Path $env:TEMP "setup-summary.txt"
 try {
     $summaryReport | Set-Content -Path $summaryPath -Encoding UTF8
-    Write-Host "📄 Setup summary saved to: setup-summary.txt" -ForegroundColor Green
+    Write-Host "📄 Setup summary saved to: $summaryPath" -ForegroundColor Green
 }
 catch {
     Write-Warning "Could not save setup summary file"
