@@ -1029,6 +1029,11 @@ else {
 Write-Section "Installing PowerShell Modules"
 
 try {
+    # Install NuGet package provider first
+    Write-Info "Installing NuGet package provider..."
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+    Write-Success "NuGet package provider installed"
+    
     # Check if ImportExcel module is installed
     $importExcelModule = Get-Module -ListAvailable -Name ImportExcel
     
