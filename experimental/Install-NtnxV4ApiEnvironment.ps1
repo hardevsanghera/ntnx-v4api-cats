@@ -726,6 +726,302 @@ else {
 
 #endregion
 
+#region VS Code Configuration
+
+Write-Section "Configuring Visual Studio Code"
+
+if ($repositoryAvailable -and (Test-CommandExists "code")) {
+    try {
+        Write-Info "Configuring VS Code settings for the project..."
+        
+        # Create .vscode directory in repository if it doesn't exist
+        $vscodeDir = Join-Path $RepositoryPath ".vscode"
+        if (-not (Test-Path $vscodeDir)) {
+            New-Item -Path $vscodeDir -ItemType Directory -Force | Out-Null
+            Write-Info "Created .vscode directory"
+        }
+        
+        # Configure VS Code settings.json
+        $settingsPath = Join-Path $vscodeDir "settings.json"
+        
+        # Detect installed paths
+        $gitPath = $null
+        $pythonPath = $null
+        $pwshPath = $null
+        
+        # Find Git executable
+        if (Test-CommandExists "git") {
+            try {
+                $gitPath = (Get-Command git).Source
+                Write-Info "Found Git at: $gitPath"
+            }
+            catch {
+                Write-Warning "Could not determine Git path"
+            }
+        }
+        
+        # Find Python executable (prefer the one in our venv)
+        $venvPythonPath = Join-Path $RepositoryPath ".venv\Scripts\python.exe"
+        if (Test-Path $venvPythonPath) {
+            $pythonPath = $venvPythonPath
+            Write-Info "Found Python (venv) at: $pythonPath"
+        }
+        elseif (Test-CommandExists "python") {
+            try {
+                $pythonPath = (Get-Command python).Source
+                Write-Info "Found Python at: $pythonPath"
+            }
+            catch {
+                Write-Warning "Could not determine Python path"
+            }
+        }
+        
+        # Find PowerShell 7 executable
+        if (Test-CommandExists "pwsh") {
+            try {
+                $pwshPath = (Get-Command pwsh).Source
+                Write-Info "Found PowerShell 7 at: $pwshPath"
+            }
+            catch {
+                Write-Warning "Could not determine PowerShell 7 path"
+            }
+        }
+        
+        # Create VS Code settings
+        $vscodeSettings = @{
+            # Git configuration
+            "git.enabled" = $true
+            "git.autorefresh" = $true
+            "git.autofetch" = $true
+            
+            # Terminal configuration - use PowerShell 7 as default
+            "terminal.integrated.defaultProfile.windows" = "PowerShell Core"
+            "terminal.integrated.profiles.windows" = @{
+                "PowerShell Core" = @{
+                    "source" = "PowerShell"
+                    "icon" = "terminal-powershell"
+                }
+                "PowerShell" = @{
+                    "source" = "PowerShell"
+                    "icon" = "terminal-powershell"
+                }
+                "Command Prompt" = @{
+                    "path" = @(
+                        "${env:windir}\Sysnative\cmd.exe",
+                        "${env:windir}\System32\cmd.exe"
+                    )
+                    "args" = @()
+                    "icon" = "terminal-cmd"
+                }
+            }
+            
+            # Python configuration
+            "python.defaultInterpreterPath" = if ($pythonPath) { $pythonPath.Replace('\', '/') } else { "python" }
+            "python.terminal.activateEnvironment" = $true
+            "python.terminal.activateEnvInCurrentTerminal" = $true
+            
+            # PowerShell configuration
+            "powershell.powerShellDefaultVersion" = "PowerShell Core"
+            
+            # File associations
+            "files.associations" = @{
+                "*.ps1" = "powershell"
+                "*.psm1" = "powershell"
+                "*.psd1" = "powershell"
+            }
+            
+            # Explorer settings
+            "explorer.confirmDelete" = $false
+            "explorer.confirmDragAndDrop" = $false
+            
+            # Editor settings
+            "editor.minimap.enabled" = $true
+            "editor.wordWrap" = "on"
+            "editor.renderWhitespace" = "boundary"
+        }
+        
+        # Add Git path if found
+        if ($gitPath) {
+            $vscodeSettings["git.path"] = $gitPath.Replace('\', '/')
+        }
+        
+        # Add PowerShell 7 path if found
+        if ($pwshPath) {
+            $vscodeSettings["terminal.integrated.profiles.windows"]["PowerShell Core"]["path"] = $pwshPath.Replace('\', '/')
+            $vscodeSettings["powershell.powerShellExePath"] = $pwshPath.Replace('\', '/')
+        }
+        
+        # Convert to JSON and save
+        $settingsJson = $vscodeSettings | ConvertTo-Json -Depth 5
+        $settingsJson | Set-Content -Path $settingsPath -Encoding UTF8
+        Write-Success "VS Code settings configured at: $settingsPath"
+        
+        # Create launch.json for Python debugging
+        $launchPath = Join-Path $vscodeDir "launch.json"
+        $launchConfig = @{
+            "version" = "0.2.0"
+            "configurations" = @(
+                @{
+                    "name" = "Python: Current File"
+                    "type" = "python"
+                    "request" = "launch"
+                    "program" = "`${file}"
+                    "console" = "integratedTerminal"
+                    "cwd" = "`${workspaceFolder}"
+                    "env" = @{
+                        "PYTHONPATH" = "`${workspaceFolder}"
+                    }
+                },
+                @{
+                    "name" = "Python: update_categories_for_vm.py"
+                    "type" = "python"
+                    "request" = "launch"
+                    "program" = "`${workspaceFolder}/update_categories_for_vm.py"
+                    "console" = "integratedTerminal"
+                    "cwd" = "`${workspaceFolder}"
+                    "env" = @{
+                        "PYTHONPATH" = "`${workspaceFolder}"
+                    }
+                }
+            )
+        }
+        
+        $launchJson = $launchConfig | ConvertTo-Json -Depth 5
+        $launchJson | Set-Content -Path $launchPath -Encoding UTF8
+        Write-Success "VS Code launch configuration created at: $launchPath"
+        
+        # Create tasks.json for PowerShell scripts
+        $tasksPath = Join-Path $vscodeDir "tasks.json"
+        $tasksConfig = @{
+            "version" = "2.0.0"
+            "tasks" = @(
+                @{
+                    "label" = "Run PowerShell Script"
+                    "type" = "shell"
+                    "command" = if ($pwshPath) { $pwshPath } else { "pwsh" }
+                    "args" = @("-File", "`${file}")
+                    "group" = "build"
+                    "presentation" = @{
+                        "echo" = $true
+                        "reveal" = "always"
+                        "panel" = "new"
+                    }
+                    "problemMatcher" = @()
+                },
+                @{
+                    "label" = "List VMs"
+                    "type" = "shell"
+                    "command" = if ($pwshPath) { $pwshPath } else { "pwsh" }
+                    "args" = @("-File", "`${workspaceFolder}/list_vms.ps1")
+                    "group" = "build"
+                    "presentation" = @{
+                        "echo" = $true
+                        "reveal" = "always"
+                        "panel" = "new"
+                    }
+                },
+                @{
+                    "label" = "List Categories"
+                    "type" = "shell"
+                    "command" = if ($pwshPath) { $pwshPath } else { "pwsh" }
+                    "args" = @("-File", "`${workspaceFolder}/list_categories.ps1")
+                    "group" = "build"
+                    "presentation" = @{
+                        "echo" = $true
+                        "reveal" = "always"
+                        "panel" = "new"
+                    }
+                },
+                @{
+                    "label" = "Build Workbook"
+                    "type" = "shell"
+                    "command" = if ($pwshPath) { $pwshPath } else { "pwsh" }
+                    "args" = @("-File", "`${workspaceFolder}/build_workbook.ps1")
+                    "group" = "build"
+                    "presentation" = @{
+                        "echo" = $true
+                        "reveal" = "always"
+                        "panel" = "new"
+                    }
+                },
+                @{
+                    "label" = "Update VM Categories (PowerShell)"
+                    "type" = "shell"
+                    "command" = if ($pwshPath) { $pwshPath } else { "pwsh" }
+                    "args" = @("-File", "`${workspaceFolder}/update_vm_categories.ps1")
+                    "group" = "build"
+                    "presentation" = @{
+                        "echo" = $true
+                        "reveal" = "always"
+                        "panel" = "new"
+                    }
+                },
+                @{
+                    "label" = "Update VM Categories (Python)"
+                    "type" = "shell"
+                    "command" = if ($pythonPath) { $pythonPath } else { "python" }
+                    "args" = @("update_categories_for_vm.py")
+                    "group" = "build"
+                    "presentation" = @{
+                        "echo" = $true
+                        "reveal" = "always"
+                        "panel" = "new"
+                    }
+                    "options" = @{
+                        "cwd" = "`${workspaceFolder}"
+                    }
+                }
+            )
+        }
+        
+        $tasksJson = $tasksConfig | ConvertTo-Json -Depth 5
+        $tasksJson | Set-Content -Path $tasksPath -Encoding UTF8
+        Write-Success "VS Code tasks configuration created at: $tasksPath"
+        
+        # Install recommended extensions
+        Write-Info "Installing recommended VS Code extensions..."
+        $extensions = @(
+            "ms-python.python",
+            "ms-vscode.powershell",
+            "ms-vscode.vscode-json",
+            "redhat.vscode-yaml",
+            "donjayamanne.githistory",
+            "eamodio.gitlens"
+        )
+        
+        foreach ($extension in $extensions) {
+            try {
+                Write-Info "Installing extension: $extension"
+                code --install-extension $extension --force 2>&1 | Out-Null
+            }
+            catch {
+                Write-Warning "Could not install extension: $extension"
+            }
+        }
+        Write-Success "VS Code extensions installation completed"
+        
+        # Open VS Code at repository root
+        Write-Info "Opening VS Code at repository root..."
+        Start-Process -FilePath "code" -ArgumentList "`"$RepositoryPath`"" -NoNewWindow
+        Write-Success "VS Code opened at: $RepositoryPath"
+        
+    }
+    catch {
+        Write-Warning "Failed to configure VS Code: $($_.Exception.Message)"
+        Write-Info "VS Code can still be used manually"
+    }
+}
+else {
+    if (-not $repositoryAvailable) {
+        Write-Warning "Skipping VS Code configuration - repository not available"
+    }
+    if (-not (Test-CommandExists "code")) {
+        Write-Warning "Skipping VS Code configuration - VS Code not available"
+    }
+}
+
+#endregion
+
 #region PowerShell Modules Installation
 
 Write-Section "Installing PowerShell Modules"
