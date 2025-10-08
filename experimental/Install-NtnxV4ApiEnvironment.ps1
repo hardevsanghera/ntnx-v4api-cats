@@ -833,11 +833,32 @@ if ($repositoryAvailable -and (Test-CommandExists "code")) {
             # Explorer settings
             "explorer.confirmDelete" = $false
             "explorer.confirmDragAndDrop" = $false
+            "explorer.autoReveal" = "focusNoScroll"
+            "explorer.autoRevealExclude" = @{
+                "**/node_modules" = $true
+                "**/.git" = $true
+            }
             
             # Editor settings
             "editor.minimap.enabled" = $true
             "editor.wordWrap" = "on"
             "editor.renderWhitespace" = "boundary"
+            
+            # Workbench settings - disable welcome screen and auto-expand folders
+            "workbench.startupEditor" = "none"
+            "workbench.welcomePage.walkthroughs.openOnInstall" = $false
+            "workbench.tips.enabled" = $false
+            "explorer.openEditors.visible" = 0
+            "workbench.tree.renderIndentGuides" = "always"
+            "explorer.sortOrder" = "type"
+            "explorer.compactFolders" = $false
+            "explorer.expandSingleFolderWorkspaces" = $true
+            
+            # Security settings - auto-trust workspace
+            "security.workspace.trust.enabled" = $false
+            "security.workspace.trust.startupPrompt" = "never"
+            "security.workspace.trust.banner" = "never"
+            "security.workspace.trust.emptyWindow" = $false
         }
         
         # Add Git path if found
@@ -984,8 +1005,7 @@ if ($repositoryAvailable -and (Test-CommandExists "code")) {
         Write-Info "Installing recommended VS Code extensions..."
         $extensions = @(
             "ms-python.python",
-            "ms-vscode.powershell",
-            "ms-vscode.vscode-json",
+            "ms-vscode.powershell", 
             "redhat.vscode-yaml",
             "donjayamanne.githistory",
             "eamodio.gitlens"
@@ -994,10 +1014,17 @@ if ($repositoryAvailable -and (Test-CommandExists "code")) {
         foreach ($extension in $extensions) {
             try {
                 Write-Info "Installing extension: $extension"
-                code --install-extension $extension --force 2>&1 | Out-Null
+                $result = code --install-extension $extension --force 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Success "Extension installed: $extension"
+                }
+                else {
+                    Write-Warning "Extension installation failed: $extension (Exit code: $LASTEXITCODE)"
+                    Write-Warning "Output: $result"
+                }
             }
             catch {
-                Write-Warning "Could not install extension: $extension"
+                Write-Warning "Could not install extension: $extension - $($_.Exception.Message)"
             }
         }
         Write-Success "VS Code extensions installation completed"
