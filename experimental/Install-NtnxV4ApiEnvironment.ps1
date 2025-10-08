@@ -684,25 +684,37 @@ if (-not $SkipGitClone) {
         Write-Info "Cloning repository to $RepositoryPath..."
         try {
             if (Test-CommandExists "git") {
-                git clone $RepoUrl $RepositoryPath 2>&1 | Out-Host
-                if (Test-Path $RepositoryPath) {
+                # Capture both stdout and stderr for better error reporting
+                $gitOutput = git clone $RepoUrl $RepositoryPath 2>&1
+                $gitExitCode = $LASTEXITCODE
+                
+                if ($gitExitCode -eq 0 -and (Test-Path $RepositoryPath)) {
                     Write-Success "Repository cloned successfully"
                 }
                 else {
-                    Write-Warning "Repository cloning may have failed - directory not found"
-                    Write-Warning "You may need to clone manually: git clone $RepoUrl"
+                    Write-Warning "Repository cloning failed (Exit code: $gitExitCode)"
+                    Write-Warning "Git output: $($gitOutput -join "`n")"
+                    
+                    # Common troubleshooting suggestions
+                    Write-Info "Possible causes:"
+                    Write-Info "• Network connectivity issues"
+                    Write-Info "• Repository access permissions"
+                    Write-Info "• Directory already exists and is not empty"
+                    Write-Info "• Git credentials not configured"
+                    Write-Info ""
+                    Write-Info "You can clone manually with: git clone $RepoUrl `"$RepositoryPath`""
                     Write-Info "The script will continue with existing setup..."
                 }
             }
             else {
                 Write-Warning "Git is not available - cannot clone repository"
-                Write-Info "Please clone manually: git clone $RepoUrl $RepositoryPath"
+                Write-Info "Please clone manually: git clone $RepoUrl `"$RepositoryPath`""
                 Write-Info "Or use -SkipGitClone if repository already exists"
             }
         }
         catch {
             Write-Warning "Failed to clone repository: $($_.Exception.Message)"
-            Write-Info "You can clone manually with: git clone $RepoUrl $RepositoryPath"
+            Write-Info "You can clone manually with: git clone $RepoUrl `"$RepositoryPath`""
             Write-Info "The script will continue with existing setup..."
         }
     }
