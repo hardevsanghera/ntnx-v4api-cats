@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 SYNOPSIS:
+==== UNDER CONSTRUCTION DO NOT USE
     Script Name: deploy_windows_vm.py
     Author: hardev@nutanix.com + Co-Pilot
     Date: October 2025
@@ -32,12 +33,18 @@ import sys
 import json
 import uuid
 import requests
+import argparse
 from datetime import datetime
 from base64 import b64encode
 import urllib3
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# =============================================================================
+# SAFETY CONFIGURATION - CHANGE TO True TO ENABLE EXECUTION WITHOUT --do-it
+# =============================================================================
+ALLOW_EXECUTION_WITHOUT_DOIT = False  # Set to True to bypass --do-it requirement
 
 # =============================================================================
 # VM CONFIGURATION VARIABLES - MODIFY THESE AS NEEDED
@@ -311,6 +318,59 @@ def deploy_vm(base_url, headers, payload):
 
 def main():
     """Main function"""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='Deploy a Windows VM on Nutanix AHV using v4 APIs',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Safety Notes:
+  This script will deploy a real VM on your Nutanix cluster.
+  Use --do-it parameter to confirm you want to proceed with deployment.
+  
+  Alternative: Set ALLOW_EXECUTION_WITHOUT_DOIT = True in the script to bypass this check.
+
+Examples:
+  python deploy_windows_vm.py --do-it                    # Deploy VM with confirmation
+  python deploy_windows_vm.py --help                     # Show this help
+        """
+    )
+    
+    parser.add_argument(
+        '--do-it', 
+        action='store_true',
+        help='Required parameter to confirm VM deployment (safety measure)'
+    )
+    
+    parser.add_argument(
+        '--dry-run',
+        action='store_true', 
+        help='Show what would be deployed without actually creating the VM'
+    )
+    
+    args = parser.parse_args()
+    
+    # Safety check - prevent accidental execution
+    if not args.do_it and not ALLOW_EXECUTION_WITHOUT_DOIT:
+        print("🛑 SAFETY CHECK: VM Deployment Script")
+        print("=" * 50)
+        print("This script will create a real VM on your Nutanix cluster.")
+        print("To proceed, use one of these options:")
+        print("")
+        print("1. Add --do-it parameter:")
+        print("   python deploy_windows_vm.py --do-it")
+        print("")
+        print("2. Set ALLOW_EXECUTION_WITHOUT_DOIT = True in the script")
+        print("")
+        print("3. Use --dry-run to see what would be deployed:")
+        print("   python deploy_windows_vm.py --dry-run")
+        print("")
+        print("Use --help for more information.")
+        sys.exit(1)
+    
+    if args.dry_run:
+        print("🔍 DRY RUN MODE - No VM will actually be created")
+        print("=" * 60)
+    
     print("=" * 80)
     print("🖥️  Nutanix AHV Windows VM Deployment Script")
     print("=" * 80)
@@ -363,6 +423,21 @@ def main():
     print(f"CPUs: {NUM_VCPUS} x {NUM_CORES_PER_VCPU}")
     print(f"Memory: {MEMORY_SIZE_MIB} MiB")
     print(f"Boot Disk: {BOOT_DISK_SIZE_GIB} GiB")
+    
+    # Handle dry-run mode
+    if args.dry_run:
+        print(f"\n🔍 DRY RUN: VM configuration shown above would be deployed")
+        print("No actual VM creation will occur in dry-run mode.")
+        
+        # Create VM payload to show what would be sent
+        vm_payload = create_vm_payload(VM_NAME, selected_image, selected_network)
+        
+        print(f"\n📄 API Payload that would be sent:")
+        print(json.dumps(vm_payload, indent=2))
+        
+        print(f"\n✅ Dry run completed successfully!")
+        print("To actually deploy the VM, run with --do-it (without --dry-run)")
+        sys.exit(0)
     
     confirm = input(f"\nProceed with VM deployment? (y/N): ").strip().lower()
     if confirm not in ['y', 'yes']:
