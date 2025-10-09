@@ -65,9 +65,9 @@ BOOT_DISK_BUS = "SCSI"          # Bus type: SCSI, IDE, or SATA
 
 # VM Hardware Configuration
 MACHINE_TYPE = "PC"             # Machine type: PC or Q35
-BIOS_TYPE = "UEFI"              # BIOS type: UEFI or LEGACY
-SECURE_BOOT = True              # Enable secure boot (Windows requirement)
-TPM_ENABLED = True              # Enable TPM 2.0 (Windows 11 requirement)
+BIOS_TYPE = "LEGACY"              # BIOS type: UEFI or LEGACY
+SECURE_BOOT = False              # Enable secure boot (Windows requirement)
+TPM_ENABLED = False              # Enable TPM 2.0 (Windows 11 requirement)
 
 # Boot Configuration
 BOOT_ORDER = ["DISK", "CDROM", "NETWORK"]  # Boot device priority
@@ -111,7 +111,30 @@ def create_auth_header(username, password):
     return {'Authorization': f'Basic {encoded_credentials}'}
 
 def make_api_request(method, url, headers, data=None):
-    """Make API request with error handling"""
+    """Make API request with error handling and debug output"""
+    
+    # Debug output - show request details
+    print(f"\n🔍 API Request Debug Info:")
+    print(f"📡 Method: {method.upper()}")
+    print(f"🌐 URL: {url}")
+    
+    print(f"📋 Headers:")
+    for key, value in headers.items():
+        # Mask sensitive authorization header for security
+        if key.lower() == 'authorization':
+            masked_value = f"{value[:10]}...{value[-4:]}" if len(value) > 14 else "***"
+            print(f"  {key}: {masked_value}")
+        else:
+            print(f"  {key}: {value}")
+    
+    if data is not None:
+        print(f"📦 Payload:")
+        print(json.dumps(data, indent=2))
+    else:
+        print(f"📦 Payload: None")
+    
+    print("-" * 80)
+    
     try:
         if method.upper() == 'GET':
             response = requests.get(url, headers=headers, verify=False, timeout=30)
@@ -120,18 +143,131 @@ def make_api_request(method, url, headers, data=None):
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         
+        # Debug output - show response details
+        print(f"📨 Response Status: {response.status_code}")
+        print(f"📏 Response Size: {len(response.content)} bytes")
+        
         response.raise_for_status()
-        return response.json() if response.content else {}
+        
+        response_data = response.json() if response.content else {}
+        
+        # Show summary of response data
+        if response_data:
+            if isinstance(response_data, dict):
+                print(f"📄 Response Keys: {list(response_data.keys())}")
+                if 'data' in response_data and isinstance(response_data['data'], list):
+                    print(f"📊 Data Items Count: {len(response_data['data'])}")
+            else:
+                print(f"📄 Response Type: {type(response_data)}")
+        else:
+            print(f"📄 Response: Empty")
+        
+        print("✅ Request completed successfully")
+        print("=" * 80)
+        
+        return response_data
     
     except requests.exceptions.RequestException as e:
-        print(f"API request failed: {e}")
+        print(f"❌ API request failed: {e}")
+        print(f"🔍 Response Status Code: {getattr(e.response, 'status_code', 'N/A')}")
+        
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_details = e.response.json()
-                print(f"Error details: {json.dumps(error_details, indent=2)}")
+                print(f"💥 Error details: {json.dumps(error_details, indent=2)}")
             except:
-                print(f"Error response: {e.response.text}")
+                print(f"💥 Error response: {e.response.text}")
+        
+        print("=" * 80)
         sys.exit(1)
+
+def find_image_by_name(base_url, headers, image_name):
+    """Find a specific image by name"""
+    print(f"\n🔍 Searching for image: {image_name}")
+    
+    url = f"{base_url}/vmm/v4.1/content/images"
+    images_data = make_api_request('GET', url, headers)
+    
+    if 'data' not in images_data or not images_data['data']:
+        print("No images found!")
+        return None
+    
+    # Search for exact match first, then case-insensitive
+    for image in images_data['data']:
+        if image.get('name', '') == image_name:
+            print(f"✅ Found exact match: {image['name']}")
+            return {
+                'name': image.get('name', 'Unknown'),
+                'type': image.get('type', 'Unknown'),
+                'size_gb': round(image.get('sizeInBytes', 0) / (1024**3), 2),
+                'ext_id': image.get('extId', 'Unknown'),
+                'data': image
+            }
+    
+    # Try case-insensitive match
+    for image in images_data['data']:
+        if image.get('name', '').lower() == image_name.lower():
+            print(f"✅ Found case-insensitive match: {image['name']}")
+            return {
+                'name': image.get('name', 'Unknown'),
+                'type': image.get('type', 'Unknown'),
+                'size_gb': round(image.get('sizeInBytes', 0) / (1024**3), 2),
+                'ext_id': image.get('extId', 'Unknown'),
+                'data': image
+            }
+    
+    # Show available images if not found
+    print(f"❌ Image '{image_name}' not found!")
+    print("\nAvailable images:")
+    for idx, image in enumerate(images_data['data']):
+        name = image.get('name', 'Unknown')
+        print(f"  {idx}: {name}")
+    
+    return None
+
+def find_network_by_name(base_url, headers, subnet_name):
+    """Find a specific network/subnet by name"""
+    print(f"\n🔍 Searching for subnet: {subnet_name}")
+    
+    url = f"{base_url}/networking/v4.1/config/subnets"
+    networks_data = make_api_request('GET', url, headers)
+    
+    if 'data' not in networks_data or not networks_data['data']:
+        print("No networks found!")
+        return None
+    
+    # Search for exact match first, then case-insensitive
+    for network in networks_data['data']:
+        if network.get('name', '') == subnet_name:
+            print(f"✅ Found exact match: {network['name']}")
+            return {
+                'name': network.get('name', 'Unknown'),
+                'type': network.get('subnetType', 'Unknown'),
+                'vlan_id': network.get('vlanId', 'N/A'),
+                'ext_id': network.get('extId', 'Unknown'),
+                'data': network
+            }
+    
+    # Try case-insensitive match
+    for network in networks_data['data']:
+        if network.get('name', '').lower() == subnet_name.lower():
+            print(f"✅ Found case-insensitive match: {network['name']}")
+            return {
+                'name': network.get('name', 'Unknown'),
+                'type': network.get('subnetType', 'Unknown'),
+                'vlan_id': network.get('vlanId', 'N/A'),
+                'ext_id': network.get('extId', 'Unknown'),
+                'data': network
+            }
+    
+    # Show available networks if not found
+    print(f"❌ Subnet '{subnet_name}' not found!")
+    print("\nAvailable subnets:")
+    for idx, network in enumerate(networks_data['data']):
+        name = network.get('name', 'Unknown')
+        print(f"  {idx}: {name}")
+    
+    return None
 
 def list_images(base_url, headers):
     """List available disk images"""
@@ -330,8 +466,16 @@ Safety Notes:
   Alternative: Set ALLOW_EXECUTION_WITHOUT_DOIT = True in the script to bypass this check.
 
 Examples:
-  python deploy_windows_vm.py --do-it                    # Deploy VM with confirmation
-  python deploy_windows_vm.py --help                     # Show this help
+  python deploy_windows_vm.py --do-it                                    # Interactive mode
+  python deploy_windows_vm.py --do-it --image-name "Windows2019"        # Specify image only
+  python deploy_windows_vm.py --do-it --subnet "Production-VLAN100"     # Specify network only
+  python deploy_windows_vm.py --do-it --image-name "Windows2019" --subnet "Prod-Net"  # Fully automated
+  python deploy_windows_vm.py --dry-run --image-name "Windows2019"      # Dry run with specific image
+  python deploy_windows_vm.py --help                                     # Show this help
+
+Parameters:
+  --image-name: Exact name of the disk image to use (case-insensitive fallback)
+  --subnet:     Exact name of the subnet/network to use (case-insensitive fallback)
         """
     )
     
@@ -345,6 +489,18 @@ Examples:
         '--dry-run',
         action='store_true', 
         help='Show what would be deployed without actually creating the VM'
+    )
+    
+    parser.add_argument(
+        '--image-name',
+        type=str,
+        help='Name of the disk image to use (exact match). If not provided, will show interactive list.'
+    )
+    
+    parser.add_argument(
+        '--subnet',
+        type=str,
+        help='Name of the subnet/network to use (exact match). If not provided, will show interactive list.'
     )
     
     args = parser.parse_args()
@@ -395,25 +551,43 @@ Examples:
         print("❌ Connection failed! Please check your credentials and URL.")
         sys.exit(1)
     
-    # List and select image
-    images = list_images(base_url, headers)
-    if not images:
-        print("Cannot proceed without available images.")
-        sys.exit(1)
+    # Handle image selection
+    selected_image = None
+    if args.image_name:
+        # Use specified image name
+        selected_image = find_image_by_name(base_url, headers, args.image_name)
+        if not selected_image:
+            print(f"Cannot proceed - specified image '{args.image_name}' not found.")
+            sys.exit(1)
+    else:
+        # Use interactive selection
+        images = list_images(base_url, headers)
+        if not images:
+            print("Cannot proceed without available images.")
+            sys.exit(1)
+        
+        selected_image = select_from_list(images, "image")
+        if not selected_image:
+            sys.exit(1)
     
-    selected_image = select_from_list(images, "image")
-    if not selected_image:
-        sys.exit(1)
-    
-    # List and select network
-    networks = list_networks(base_url, headers)
-    if not networks:
-        print("Cannot proceed without available networks.")
-        sys.exit(1)
-    
-    selected_network = select_from_list(networks, "network")
-    if not selected_network:
-        sys.exit(1)
+    # Handle network selection
+    selected_network = None
+    if args.subnet:
+        # Use specified subnet name
+        selected_network = find_network_by_name(base_url, headers, args.subnet)
+        if not selected_network:
+            print(f"Cannot proceed - specified subnet '{args.subnet}' not found.")
+            sys.exit(1)
+    else:
+        # Use interactive selection
+        networks = list_networks(base_url, headers)
+        if not networks:
+            print("Cannot proceed without available networks.")
+            sys.exit(1)
+        
+        selected_network = select_from_list(networks, "network")
+        if not selected_network:
+            sys.exit(1)
     
     # Confirm deployment
     print(f"\n📋 Deployment Summary:")

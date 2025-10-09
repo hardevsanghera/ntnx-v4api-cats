@@ -241,3 +241,4 @@ test_data/
 production_data/
 *.prod.*
 *_prod.*
+files/vars.txt
