@@ -684,16 +684,45 @@ if (-not $SkipGitClone) {
         Write-Info "Cloning repository to $RepositoryPath..."
         try {
             if (Test-CommandExists "git") {
-                # Capture both stdout and stderr for better error reporting
-                $gitOutput = git clone $RepoUrl $RepositoryPath 2>&1
-                $gitExitCode = $LASTEXITCODE
+                # Use cmd.exe to run git to avoid PowerShell stderr interpretation issues
+                Write-Info "Cloning repository via Git..."
+                
+                # Create the parent directory if it doesn't exist
+                $parentDir = Split-Path $RepositoryPath -Parent
+                if (-not (Test-Path $parentDir)) {
+                    New-Item -Path $parentDir -ItemType Directory -Force | Out-Null
+                }
+                
+                # Use cmd.exe to execute git clone to avoid PowerShell stderr issues
+                $gitCommand = "git clone `"$RepoUrl`" `"$RepositoryPath`""
+                Write-Info "Executing: $gitCommand"
+                
+                # Execute via cmd.exe to properly handle git's output
+                $gitProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $gitCommand -Wait -PassThru -NoNewWindow -RedirectStandardOutput "$env:TEMP\git_output.txt" -RedirectStandardError "$env:TEMP\git_error.txt"
+                $gitExitCode = $gitProcess.ExitCode
+                
+                # Read the output files
+                $gitOutput = @()
+                if (Test-Path "$env:TEMP\git_output.txt") {
+                    $gitOutput += Get-Content "$env:TEMP\git_output.txt" -ErrorAction SilentlyContinue
+                    Remove-Item "$env:TEMP\git_output.txt" -Force -ErrorAction SilentlyContinue
+                }
+                if (Test-Path "$env:TEMP\git_error.txt") {
+                    $gitOutput += Get-Content "$env:TEMP\git_error.txt" -ErrorAction SilentlyContinue
+                    Remove-Item "$env:TEMP\git_error.txt" -Force -ErrorAction SilentlyContinue
+                }
                 
                 if ($gitExitCode -eq 0 -and (Test-Path $RepositoryPath)) {
                     Write-Success "Repository cloned successfully"
+                    if ($gitOutput) {
+                        Write-Info "Git output: $($gitOutput -join "`n")"
+                    }
                 }
                 else {
                     Write-Warning "Repository cloning failed (Exit code: $gitExitCode)"
-                    Write-Warning "Git output: $($gitOutput -join "`n")"
+                    if ($gitOutput) {
+                        Write-Warning "Git output: $($gitOutput -join "`n")"
+                    }
                     
                     # Common troubleshooting suggestions
                     Write-Info "Possible causes:"
@@ -702,13 +731,13 @@ if (-not $SkipGitClone) {
                     Write-Info "• Directory already exists and is not empty"
                     Write-Info "• Git credentials not configured"
                     Write-Info ""
-                    Write-Info "You can clone manually with: git clone $RepoUrl `"$RepositoryPath`""
+                    Write-Info "You can clone manually with: git clone `"$RepoUrl`" `"$RepositoryPath`""
                     Write-Info "The script will continue with existing setup..."
                 }
             }
             else {
                 Write-Warning "Git is not available - cannot clone repository"
-                Write-Info "Please clone manually: git clone $RepoUrl `"$RepositoryPath`""
+                Write-Info "Please clone manually: git clone `"$RepoUrl`" `"$RepositoryPath`""
                 Write-Info "Or use -SkipGitClone if repository already exists"
             }
         }
