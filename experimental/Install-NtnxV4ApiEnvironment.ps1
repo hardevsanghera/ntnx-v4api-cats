@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+ #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Automated installation script for ntnx-v4api-cats environment setup
@@ -66,7 +66,7 @@ openpyxl>=3.1.0
 urllib3>=2.0.0
 "@
 
-Write-Host "🏷️  Nutanix v4 API Environment Setup Script" -ForegroundColor Cyan
+Write-Host "  Nutanix v4 API Environment Setup Script" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -81,23 +81,23 @@ function Test-IsAdmin {
 function Write-Section {
     param([string]$Title)
     Write-Host ""
-    Write-Host "📦 $Title" -ForegroundColor Yellow
+    Write-Host " $Title" -ForegroundColor Yellow
     Write-Host ("-" * ($Title.Length + 3)) -ForegroundColor Yellow
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "✅ $Message" -ForegroundColor Green
+    Write-Host " $Message" -ForegroundColor Green
 }
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "ℹ️  $Message" -ForegroundColor Green
+    Write-Host "  $Message" -ForegroundColor Green
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "⚠️  $Message" -ForegroundColor Yellow
+    Write-Host "  $Message" -ForegroundColor Yellow
 }
 
 function Test-CommandExists {
@@ -726,10 +726,10 @@ if (-not $SkipGitClone) {
                     
                     # Common troubleshooting suggestions
                     Write-Info "Possible causes:"
-                    Write-Info "• Network connectivity issues"
-                    Write-Info "• Repository access permissions"
-                    Write-Info "• Directory already exists and is not empty"
-                    Write-Info "• Git credentials not configured"
+                    Write-Info " Network connectivity issues"
+                    Write-Info " Repository access permissions"
+                    Write-Info " Directory already exists and is not empty"
+                    Write-Info " Git credentials not configured"
                     Write-Info ""
                     Write-Info "You can clone manually with: git clone `"$RepoUrl`" `"$RepositoryPath`""
                     Write-Info "The script will continue with existing setup..."
@@ -1212,10 +1212,10 @@ else {
 Write-Section "Installation Complete"
 
 Write-Host ""
-Write-Host "🎉 Environment setup completed successfully!" -ForegroundColor Green
+Write-Host " Environment setup completed successfully!" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "📋 Next Steps:" -ForegroundColor Cyan
+Write-Host " Next Steps:" -ForegroundColor Cyan
 Write-Host "1. Navigate to the repository directory:" -ForegroundColor White
 Write-Host "   cd `"$RepositoryPath`"" -ForegroundColor Gray
 Write-Host ""
@@ -1234,16 +1234,16 @@ Write-Host "   .\update_vm_categories.ps1" -ForegroundColor Gray
 Write-Host "   python update_categories_for_vm.py" -ForegroundColor Gray
 Write-Host ""
 
-Write-Host "📚 Documentation:" -ForegroundColor Cyan
+Write-Host " Documentation:" -ForegroundColor Cyan
 Write-Host "   Repository: https://github.com/hardevsanghera/ntnx-v4api-cats" -ForegroundColor Gray
 Write-Host "   README.md contains detailed usage instructions" -ForegroundColor Gray
 Write-Host ""
 
-Write-Host "⚠️  Important Notes:" -ForegroundColor Yellow
-Write-Host "   • Update files\vars.txt with your Nutanix Prism Central details" -ForegroundColor Gray
-Write-Host "   • Scripts use plain-text passwords - secure appropriately" -ForegroundColor Gray
-Write-Host "   • SSL certificate checking is disabled - modify for production" -ForegroundColor Gray
-Write-Host "   • Microsoft Excel is required for COM automation features" -ForegroundColor Gray
+Write-Host "  Important Notes:" -ForegroundColor Yellow
+Write-Host "    Update files\vars.txt with your Nutanix Prism Central details" -ForegroundColor Gray
+Write-Host "    Scripts use plain-text passwords - secure appropriately" -ForegroundColor Gray
+Write-Host "    SSL certificate checking is disabled - modify for production" -ForegroundColor Gray
+Write-Host "    Microsoft Excel is required for COM automation features" -ForegroundColor Gray
 Write-Host ""
 
 # Create a summary report
@@ -1269,7 +1269,7 @@ Next: Configure files\vars.txt and follow the README.md workflow
 $summaryPath = Join-Path $env:TEMP "setup-summary.txt"
 try {
     $summaryReport | Set-Content -Path $summaryPath -Encoding UTF8
-    Write-Host "📄 Setup summary saved to: $summaryPath" -ForegroundColor Green
+    Write-Host " Setup summary saved to: $summaryPath" -ForegroundColor Green
 }
 catch {
     Write-Warning "Could not save setup summary file"
@@ -1279,3 +1279,4 @@ Write-Host ""
 Write-Success "Setup completed! Ready to work with Nutanix v4 APIs."
 
 #endregion
+ 
