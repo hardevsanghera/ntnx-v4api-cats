@@ -4,7 +4,7 @@
     Automated installation script for ntnx-v4api-cats environment setup
     Download just this script from the repository:
     cd to your directory then
-    curl -O https://raw.githubusercontent.com/hardevsanghera/ntnx-v4api-cats/experimental/Install-NtnxV4ApiEnvironment.ps1
+    curl -O https://raw.githubusercontent.com/hardevsanghera/ntnx-v4api-cats/main/experimental/Install-NtnxV4ApiEnvironment.ps1
  
 .DESCRIPTION
     --------------------------------------
