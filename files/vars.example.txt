@@ -1,0 +1,5 @@
+# Prism Central API connection config (example)
+# Copy this to vars.txt and fill in real values; vars.txt is git-ignored.
+baseUrl=https://<pc-host-or-ip>:9440/api
+username=<your-username>
+password=<your-strong-password>

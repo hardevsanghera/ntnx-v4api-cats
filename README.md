@@ -37,7 +37,8 @@ This project provides a collection of scripts to manage VM categories in Nutanix
 
 ### Step 1: Configuration
 ```powershell
-# Edit configuration file with your Prism Central details
+# Create your config from the example and edit with Prism Central details
+Copy-Item files\vars.example.txt files\vars.txt -Force
 notepad files\vars.txt
 ```
 
