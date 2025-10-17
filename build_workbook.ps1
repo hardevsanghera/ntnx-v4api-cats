@@ -29,29 +29,92 @@
     before deploying to production systems.
 #>
 
+    # Helper: unique strings preserving first-seen order, case-insensitive
+    function Get-UniqueOrdinalIgnoreCase {
+        param([string[]]$Items)
+        $set = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($i in $Items) {
+            if ([string]::IsNullOrWhiteSpace($i)) { continue }
+            if ($set.Add($i)) { $i }
+        }
+    }
+
+    # Helper: unique strings preserving first-seen order, case-sensitive
+    function Get-UniqueOrdinal {
+        param([string[]]$Items)
+        $set = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($i in $Items) {
+            if ([string]::IsNullOrWhiteSpace($i)) { continue }
+            if ($set.Add($i)) { $i }
+        }
+    }
+
+    # Helper: CSV-quote an array of values (simple, fast)
+    function Convert-ToCsvRow {
+        param([object[]]$Values)
+        $processed = $Values | ForEach-Object {
+            $v = if ($null -eq $_) { '' } else { [string]$_ }
+            if ($v -match '[",\n\r]') { '"' + ($v -replace '"','""') + '"' } else { $v }
+        }
+        return ($processed -join ',')
+    }
+
 function Resolve-CategoryMappings {
     param(
         [string]$VmJsonPath =       "$PWD\scratch\vm_list.json",
         [string]$CategoryJsonPath = "$PWD\scratch\categories.json",
         [string]$OutCsvPath =       "$PWD\scratch\vm_categories.csv",
-        [switch]$SplitCategories = $true,                # if set, write separate columns per category key DO NOT CHANGE THIS from $true
-        [switch]$TimestampExcel = $false                 # if set, append timestamp to Excel filename
+    [ValidateSet('split','flat')]
+    [string]$Layout = 'split',                       # output layout: 'split' (per-category columns) or 'flat'
+        [switch]$SplitCategories,                        # DEPRECATED: prefer -Layout split
+        [switch]$NoSplitCategories,                      # DEPRECATED: prefer -Layout flat
+    [switch]$TimestampExcel,                         # append timestamp to Excel filename when present
+        [ValidateSet('sensitive','insensitive')]
+        [string]$CaseMode = 'sensitive',                 # default: preserve case distinctions
+        [switch]$SelfTest                                # generate mock data with conflicting case keys
     )
 
-    if (-not (Test-Path $VmJsonPath)) {
-        Write-Warning "VM JSON file not found at $VmJsonPath"
-        return
+    # Determine effective split behavior with backward compatibility for deprecated switches
+    if ($PSBoundParameters.ContainsKey('SplitCategories')) {
+        $doSplit = $true
+    } elseif ($PSBoundParameters.ContainsKey('NoSplitCategories')) {
+        $doSplit = $false
+    } else {
+        $doSplit = ($Layout -eq 'split')
     }
 
-    $data = (Get-Content -Path $VmJsonPath -Raw | ConvertFrom-Json)
+    # Determine string comparer based on CaseMode
+    $keyComparer = if ($CaseMode -eq 'insensitive') { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
 
-    # Attempt to load category definitions from provided path; fall back to objects in the VM dump
-    $catDefs = @()
-    if (Test-Path $CategoryJsonPath) {
-        try { $catDefs = (Get-Content -Path $CategoryJsonPath -Raw | ConvertFrom-Json).data } catch { $catDefs = @() }
-    }
-    if ( ( -not $catDefs -or $catDefs.Count -lt 1 ) -and $data.data) {
-        $catDefs = $data.data | Where-Object { $_.'$objectType' -eq 'prism.v4.config.Category' }
+    # Build data from files or self-test mocks
+    if ($SelfTest) {
+        # Minimal mock data: one VM with two category references mapping to keys that differ only by case
+        $data = @{ data = @(
+            @{ '$objectType' = 'vmm.v4.ahv.config.Vm'; name = 'vm-case-test'; extId = 'vm-1'; categories = @(
+                @{ extId = 'cat-Env' }, @{ extId = 'cat-env' }
+            ) }
+        ) } | ConvertTo-Json -Depth 5 | ConvertFrom-Json
+
+        $catDefs = @(
+            @{ '$objectType' = 'prism.v4.config.Category'; extId = 'cat-Env'; key = 'Environment'; value = 'Prod' },
+            @{ '$objectType' = 'prism.v4.config.Category'; extId = 'cat-env'; key = 'environment'; value = 'Dev' }
+        )
+    } else {
+        if (-not (Test-Path $VmJsonPath)) {
+            Write-Warning "VM JSON file not found at $VmJsonPath"
+            return
+        }
+
+        $data = (Get-Content -Path $VmJsonPath -Raw | ConvertFrom-Json)
+
+        # Attempt to load category definitions from provided path; fall back to objects in the VM dump
+        $catDefs = @()
+        if (Test-Path $CategoryJsonPath) {
+            try { $catDefs = (Get-Content -Path $CategoryJsonPath -Raw | ConvertFrom-Json).data } catch { $catDefs = @() }
+        }
+        if ( ( -not $catDefs -or $catDefs.Count -lt 1 ) -and $data.data) {
+            $catDefs = $data.data | Where-Object { $_.'$objectType' -eq 'prism.v4.config.Category' }
+        }
     }
 
     # Build a mapping of category extId -> category object for quick lookup
@@ -63,8 +126,9 @@ function Resolve-CategoryMappings {
         $vmName = if ($vm.status -and $vm.status.name) { $vm.status.name } elseif ($vm.name) { $vm.name } else { '<unnamed>' }
         $vmExt = if ($vm.metadata -and $vm.metadata.extId) { $vm.metadata.extId } elseif ($vm.extId) { $vm.extId } else { '<no-extId>' }
 
-        $resolved = @()
-        $catMap = @{}
+    $resolved = @()
+    # Per-VM category map: Dictionary[string, List[string]] with chosen comparer
+    $catMap = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.List[string]]]::new($keyComparer)
         if ($vm.categories) {
             foreach ($cref in $vm.categories) {
                 $cext = $cref.extId
@@ -74,15 +138,15 @@ function Resolve-CategoryMappings {
                     if (-not $cobj) { $cobj = $catDefs | Where-Object { $_.extId -eq $cext } | Select-Object -First 1 }
                     if ($cobj) {
                         $resolved += "{0}={1}" -f $cobj.key, $cobj.value
-                        $k = $cobj.key
-                        if (-not $catMap.ContainsKey($k)) { $catMap[$k] = @() }
-                        $catMap[$k] += $cobj.value
+                        $k = [string]$cobj.key
+                        if (-not $catMap.ContainsKey($k)) { $catMap[$k] = [System.Collections.Generic.List[string]]::new() }
+                        $catMap[$k].Add([string]$cobj.value)
                     } else {
                         $resolved += $cext
                         # Use the extId itself as a fallback key
-                        $k = $cext
-                        if (-not $catMap.ContainsKey($k)) { $catMap[$k] = @() }
-                        $catMap[$k] += $cext
+                        $k = [string]$cext
+                        if (-not $catMap.ContainsKey($k)) { $catMap[$k] = [System.Collections.Generic.List[string]]::new() }
+                        $catMap[$k].Add([string]$cext)
                     }
                 }
             }
@@ -108,29 +172,30 @@ function Resolve-CategoryMappings {
     if (-not (Test-Path $csvDir)) { New-Item -Path $csvDir -ItemType Directory -Force | Out-Null }
 
     try {
-        if ($SplitCategories) {
-            # Build column list of unique category keys (keep order stable)
+    if ($doSplit) {
+            # Build column list of unique category keys (case-sensitive, preserve order)
             $allKeys = @()
             $allKeys += ($catDefs | Where-Object { $_.key } | Select-Object -ExpandProperty key)
             $allKeys += ($results | ForEach-Object { if ($_.CategoriesMap) { $_.CategoriesMap.Keys } })
-            $allKeys = $allKeys | Select-Object -Unique
+            $allKeys = if ($CaseMode -eq 'insensitive') { Get-UniqueOrdinalIgnoreCase $allKeys } else { Get-UniqueOrdinal $allKeys }
 
-            # Build rows where each category key becomes a column
-            # IMPORTANT: Original result objects store properties literally as 'VM Name' and 'VM extId'.
-            # Previous code incorrectly referenced $r.Name / $r.ExtId which are NULL, yielding blank columns.
-            $csvRows = foreach ($r in $results) {
-                $h = @{ 'VM Name' = $r.'VM Name'; 'VM extId' = $r.'VM extId' }
-                foreach ($k in $allKeys) { $h[$k] = '' }
-                if ($r.CategoriesMap) {
-                    foreach ($k in $allKeys) {
-                        if ($r.CategoriesMap.ContainsKey($k)) { $h[$k] = ($r.CategoriesMap[$k] -join '; ') }
-                    }
+            # Manually write CSV to preserve case distinct headers
+            $headers = @('VM Name','VM extId') + $allKeys
+            $lines = New-Object System.Collections.Generic.List[string]
+            [void]$lines.Add((Convert-ToCsvRow -Values $headers))
+            foreach ($r in $results) {
+                $row = New-Object System.Collections.Generic.List[string]
+                [void]$row.Add([string]$r.'VM Name')
+                [void]$row.Add([string]$r.'VM extId')
+                foreach ($k in $allKeys) {
+                    if ($r.CategoriesMap -and $r.CategoriesMap.ContainsKey($k)) {
+                        $vals = $r.CategoriesMap[$k]
+                        [void]$row.Add(([string]::Join('; ', $vals)))
+                    } else { [void]$row.Add('') }
                 }
-                [PSCustomObject]$h
+                [void]$lines.Add((Convert-ToCsvRow -Values $row.ToArray()))
             }
-
-            $propNames = @('VM Name','VM extId') + $allKeys
-            $csvRows | Select-Object $propNames | Export-Csv -Path $OutCsvPath -NoTypeInformation -Encoding UTF8
+            $lines | Set-Content -Path $OutCsvPath -Encoding UTF8
     
         } else {
             # Legacy CSV format: Name, Categories, VM extId
@@ -149,7 +214,7 @@ function Resolve-CategoryMappings {
         Write-Warning "Failed to save CSV: $($_.Exception.Message)"
     }
 
-    # Also write to an Excel workbook at $HOME\Documents\V4APIs\cat_map_{timestamp}.xlsx (if requested)
+    # Also write an Excel workbook to .\scratch\cat_map{_timestamp}.xlsx (if requested)
     $ts = (Get-Date).ToString('yyyyMMdd_HHmmss')
     if ($TimestampExcel) {
         $excelFilename = "cat_map_$ts.xlsx"
@@ -172,12 +237,13 @@ function Resolve-CategoryMappings {
     # Prefer ImportExcel's Export-Excel if available
     if (Get-Command -Name Export-Excel -ErrorAction SilentlyContinue) {
         try {
-            if ($SplitCategories) {
+            if ($doSplit) {
                 # Build column list of unique category keys (keep order stable)
                 $allKeys = @()
                 $allKeys += ($catDefs | Where-Object { $_.key } | Select-Object -ExpandProperty key)
                 $allKeys += ($results | ForEach-Object { if ($_.CategoriesMap) { $_.CategoriesMap.Keys } })
-                $allKeys = $allKeys | Select-Object -Unique
+                # Dedupe case-sensitively so Environment and environment remain distinct
+                $allKeys = if ($CaseMode -eq 'insensitive') { Get-UniqueOrdinalIgnoreCase $allKeys } else { Get-UniqueOrdinal $allKeys }
 
                 # Create ordered objects where each key becomes a column, using per-VM CategoriesMap
                 $splitRows = foreach ($r in $results) {
@@ -185,14 +251,20 @@ function Resolve-CategoryMappings {
                     foreach ($k in $allKeys) { $h[$k] = '' }
                     if ($r.CategoriesMap) {
                         foreach ($k in $allKeys) {
-                            if ($r.CategoriesMap.ContainsKey($k)) { $h[$k] = ($r.CategoriesMap[$k] -join '; ') }
+                            if ($r.CategoriesMap.ContainsKey($k)) {
+                                $vals = $r.CategoriesMap[$k]
+                                $h[$k] = ([string]::Join('; ', $vals))
+                            }
                         }
                     }
                     [PSCustomObject]$h
                 }
-                # New order: Name, VM extId, <category keys>
-                $propNames = @('VM Name','VM extId') + $allKeys
-                $ordered = $splitRows | Select-Object $propNames
+                # Build objects explicitly to preserve header case distinction
+                $ordered = foreach ($r in $splitRows) {
+                    $o = [ordered]@{ 'VM Name' = $r.'VM Name'; 'VM extId' = $r.'VM extId' }
+                    foreach ($k in $allKeys) { $o[$k] = $r.$k }
+                    [pscustomobject]$o
+                }
             } else {
                 # Reorder properties to Name, VM extId, Categories for output (legacy non-split)
                 $ordered = $results | Select-Object @{n='VM Name';e={$_."VM Name"}}, @{n='VM extId';e={$_."VM extId"}}, @{n='Categories';e={$_.Categories}}
@@ -310,7 +382,7 @@ function Resolve-CategoryMappings {
 #            # Choose which data collection to pass: if we built an ordered object for Export-Excel use that, otherwise pass results
 #            $toPass = if ($ordered) { $ordered } else { $results }
 #
-#            & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Path $excelPath -Results $toPass -CatDefs $catDefs -CatByExt $catByExt -SplitCategories:($SplitCategories.IsPresent)
+#            & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Path $excelPath -Results $toPass -CatDefs $catDefs -CatByExt $catByExt -Layout $Layout
 #        } catch {
 #            Write-Warning "Failed to write Excel workbook via helper script: $($_.Exception.Message)"
 #        }

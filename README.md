@@ -52,8 +52,14 @@ notepad files\vars.txt
 
 ### Step 3: Build Workbook
 ```powershell
-# Generate Excel workbook with VM-category mappings
-.\build_workbook.ps1
+# Generate CSV and, if ImportExcel is available, an Excel workbook with VM-category mappings
+\.\build_workbook.ps1
+
+# Optional flags you can use (see details below):
+#   -Layout split|flat        # split = separate columns per category key (default), flat = single "Categories" column
+#   -CaseMode sensitive|insensitive  # control whether keys differing only by case are treated as distinct (default: sensitive)
+#   -TimestampExcel           # include a timestamp in the Excel filename
+#   -SelfTest                 # run with in-memory mock data to validate case-sensitive behavior
 ```
 
 ### Step 4: Excel Operations
@@ -91,7 +97,58 @@ Open `VMsToUpdate.xlsx` to examine the status of category associations.
 <p>Screenshot, the "ToUpdate" sheet with status of the VM update:
 <img src="files/vm_update.png" alt="Status of VM updates" width="500">
 
-## � Python Virtual Environment Setup
+## 📦 PowerShell parameters for build_workbook.ps1
+
+The workbook generator supports a few helpful flags:
+
+- Layout
+    - split: Creates one column per category key (e.g., Environment, environment as separate columns)
+    - flat: Creates a single "Categories" column with all values concatenated
+    - Example:
+        ```powershell
+        .\build_workbook.ps1 -Layout split
+        .\build_workbook.ps1 -Layout flat
+        ```
+
+- CaseMode
+    - sensitive: Treat category keys differing only by case as distinct (default)
+    - insensitive: Fold keys differing only by case together
+    - Example:
+        ```powershell
+        .\build_workbook.ps1 -CaseMode sensitive
+        .\build_workbook.ps1 -CaseMode insensitive
+        ```
+
+- SelfTest
+    - Generates mock data with keys that differ only by case to validate outputs
+    - Example:
+        ```powershell
+        .\build_workbook.ps1 -SelfTest -Layout split -CaseMode sensitive
+        ```
+
+- TimestampExcel
+    - Appends a timestamp to the Excel filename (written to `scratch\\`)
+    - Example:
+        ```powershell
+        .\build_workbook.ps1 -TimestampExcel
+        ```
+
+Notes:
+- Excel export uses the ImportExcel module if installed; otherwise only CSV is produced.
+- Output files land in the `scratch\\` folder under the repo root:
+    - `scratch\\vm_categories.csv`
+    - `scratch\\cat_map.xlsx` (if ImportExcel is available)
+
+### ImportExcel module (for Excel output)
+If you want the Excel workbook and don't have ImportExcel yet, install it once:
+
+```powershell
+Install-Module -Name ImportExcel -Scope CurrentUser
+```
+
+After installing, re-run `build_workbook.ps1` and it will write `scratch\\cat_map.xlsx`.
+
+## 🐍 Python Virtual Environment Setup
 
 For the `update_categories_for_vm.py` script, set up a Python virtual environment:
 
@@ -142,7 +199,7 @@ python update_categories_for_vm.py
 deactivate
 ```
 
-## �📁 Project Structure
+## 📁 Project Structure
 
 ```
 ntnx-v4api-cats/
