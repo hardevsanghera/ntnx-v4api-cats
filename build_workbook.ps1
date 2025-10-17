@@ -233,6 +233,11 @@ function Resolve-CategoryMappings {
             Write-Warning "Failed to remove existing workbook at $excelPath : $($_.Exception.Message)"
         }
     }
+    # Also remove legacy hyphenated filename to prevent confusion with stale files
+    $excelPathHyphen = Join-Path $excelDir ((Split-Path -Path $excelPath -Leaf) -replace 'cat_map','cat-map')
+    if (Test-Path $excelPathHyphen) {
+        try { Remove-Item -Path $excelPathHyphen -Force -ErrorAction Stop } catch { Write-Warning "Failed to remove legacy workbook at $excelPathHyphen : $($_.Exception.Message)" }
+    }
 
     # Prefer ImportExcel's Export-Excel if available
     if (Get-Command -Name Export-Excel -ErrorAction SilentlyContinue) {
@@ -265,12 +270,23 @@ function Resolve-CategoryMappings {
                     [void]$matrix.Add($row.ToArray())
                 }
 
-                # Export data without headers starting at row 2, then insert headers to preserve exact casing
-                $pkg = $matrix | Export-Excel -Path $excelPath -WorksheetName 'VMCategories' -NoHeader -StartRow 2 -AutoSize -PassThru
+                # Create a new workbook/sheet, then write headers and data manually to avoid any automatic table/header behavior
+                $pkg = @('init') | Export-Excel -Path $excelPath -WorksheetName 'VMCategories' -NoHeader -PassThru
                 $ws = $pkg.Workbook.Worksheets['VMCategories']
+                $ws.Cells.Clear()
+                # Headers
                 for ($i = 0; $i -lt $headers.Count; $i++) { $ws.Cells[1, ($i + 1)].Value = $headers[$i] }
-                # Header formatting and autofilter over the full region
-                $lastRow = $matrix.Count + 1
+                # Data
+                $rowIndex = 2
+                foreach ($arr in $matrix) {
+                    for ($c = 0; $c -lt $headers.Count; $c++) {
+                        $val = if ($c -lt $arr.Length) { $arr[$c] } else { '' }
+                        $ws.Cells[$rowIndex, ($c + 1)].Value = [string]$val
+                    }
+                    $rowIndex++
+                }
+                # Formatting
+                $lastRow = [Math]::Max(1, $rowIndex - 1)
                 $lastCol = $headers.Count
                 $ws.Cells[1,1,1,$lastCol].Style.Font.Bold = $true
                 $ws.Cells[1,1,$lastRow,$lastCol].AutoFilter = $true
@@ -319,6 +335,10 @@ function Resolve-CategoryMappings {
                 #}
 
             Write-Host "Saved Excel workbook to $excelPath" -ForegroundColor Yellow
+            # Ensure no stale hyphenated file remains
+            if (Test-Path $excelPathHyphen) {
+                try { Remove-Item -Path $excelPathHyphen -Force -ErrorAction Stop } catch { Write-Warning "Failed to remove legacy workbook at $excelPathHyphen : $($_.Exception.Message)" }
+            }
         } catch {
             Write-Warning "Export-Excel failed: $($_.Exception.Message)"
         }
