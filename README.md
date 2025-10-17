@@ -89,7 +89,7 @@ Open `VMsToUpdate.xlsx` to examine the status of the parameter validations.
 ### Step 7: Apply Updates - see "Python Virtual Environment Setup" below
 ```python
 # Execute category updates via PYTHON
-python update_vm_categories_for_vm.py
+python update_categories_for_vm.py
 ```
 
 ### Step 8: Review Results
@@ -138,6 +138,9 @@ Notes:
 - Output files land in the `scratch\\` folder under the repo root:
     - `scratch\\vm_categories.csv`
     - `scratch\\cat_map.xlsx` (if ImportExcel is available)
+
+Backward compatibility:
+- Older invocations using `-SplitCategories` or `-NoSplitCategories` still work, but are deprecated. Prefer `-Layout split` or `-Layout flat`.
 
 ### ImportExcel module (for Excel output)
 If you want the Excel workbook and don't have ImportExcel yet, install it once:

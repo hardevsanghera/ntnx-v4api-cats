@@ -242,35 +242,45 @@ function Resolve-CategoryMappings {
                 $allKeys = @()
                 $allKeys += ($catDefs | Where-Object { $_.key } | Select-Object -ExpandProperty key)
                 $allKeys += ($results | ForEach-Object { if ($_.CategoriesMap) { $_.CategoriesMap.Keys } })
-                # Dedupe case-sensitively so Environment and environment remain distinct
+                # Dedupe according to CaseMode so Environment and environment can remain distinct in 'sensitive'
                 $allKeys = if ($CaseMode -eq 'insensitive') { Get-UniqueOrdinalIgnoreCase $allKeys } else { Get-UniqueOrdinal $allKeys }
 
-                # Create ordered objects where each key becomes a column, using per-VM CategoriesMap
-                $splitRows = foreach ($r in $results) {
-                    $h = @{ 'VM Name' = $r.'VM Name'; 'VM extId' = $r.'VM extId' }
-                    foreach ($k in $allKeys) { $h[$k] = '' }
-                    if ($r.CategoriesMap) {
-                        foreach ($k in $allKeys) {
-                            if ($r.CategoriesMap.ContainsKey($k)) {
-                                $vals = $r.CategoriesMap[$k]
-                                $h[$k] = ([string]::Join('; ', $vals))
-                            }
+                # Build a header list preserving exact case
+                $headers = @('VM Name', 'VM extId') + $allKeys
+
+                # Build matrix rows as arrays to avoid case-insensitive property collisions
+                $matrix = New-Object System.Collections.Generic.List[object[]]
+                foreach ($r in $results) {
+                    $row = New-Object System.Collections.Generic.List[object]
+                    [void]$row.Add([string]$r.'VM Name')
+                    [void]$row.Add([string]$r.'VM extId')
+                    foreach ($k in $allKeys) {
+                        if ($r.CategoriesMap -and $r.CategoriesMap.ContainsKey($k)) {
+                            $vals = $r.CategoriesMap[$k]
+                            [void]$row.Add(([string]::Join('; ', $vals)))
+                        } else {
+                            [void]$row.Add('')
                         }
                     }
-                    [PSCustomObject]$h
+                    [void]$matrix.Add($row.ToArray())
                 }
-                # Build objects explicitly to preserve header case distinction
-                $ordered = foreach ($r in $splitRows) {
-                    $o = [ordered]@{ 'VM Name' = $r.'VM Name'; 'VM extId' = $r.'VM extId' }
-                    foreach ($k in $allKeys) { $o[$k] = $r.$k }
-                    [pscustomobject]$o
-                }
+
+                # Export data without headers starting at row 2, then insert headers to preserve exact casing
+                $pkg = $matrix | Export-Excel -Path $excelPath -WorksheetName 'VMCategories' -NoHeader -StartRow 2 -AutoSize -PassThru
+                $ws = $pkg.Workbook.Worksheets['VMCategories']
+                for ($i = 0; $i -lt $headers.Count; $i++) { $ws.Cells[1, ($i + 1)].Value = $headers[$i] }
+                # Header formatting and autofilter over the full region
+                $lastRow = $matrix.Count + 1
+                $lastCol = $headers.Count
+                $ws.Cells[1,1,1,$lastCol].Style.Font.Bold = $true
+                $ws.Cells[1,1,$lastRow,$lastCol].AutoFilter = $true
+                $pkg.Save()
             } else {
                 # Reorder properties to Name, VM extId, Categories for output (legacy non-split)
                 $ordered = $results | Select-Object @{n='VM Name';e={$_."VM Name"}}, @{n='VM extId';e={$_."VM extId"}}, @{n='Categories';e={$_.Categories}}
+                $null = $ordered | Export-Excel -Path $excelPath -WorksheetName 'VMCategories' -AutoSize -AutoFilter -TableName 'VMCategories'
             }
             # -AutoSize and -AutoFilter improve readability; headers will be bold by default in Export-Excel table
-            $null = $ordered | Export-Excel -Path $excelPath -WorksheetName 'VMCategories' -AutoSize -AutoFilter -TableName 'VMCategories'
     
             # Also write AllCategories sheet: two columns 'Category' and 'extID'
             #try {
