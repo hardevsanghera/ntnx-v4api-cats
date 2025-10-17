@@ -8,9 +8,9 @@
 .DESCRIPTION
     Simple script to fetch categories from Prism Central and save JSON to .\scratch\categories.json
     PowerShell 7 script that:
-        1) Opens $PWD\files\VMsToUpdate_SKEL.xlsx
-        2) Appends all sheets from $PWD\scratch\cat_map.xlsx into the opened workbook
-        3) Saves the updated workbook to $PWD\scratch\VMsToUpdate.xlsx (don't use the timestamp switch)
+        1) Copies $PWD\files\VMsToUpdate_SKEL.xlsx to $PWD\scratch\VMsToUpdate-PROD.xlsx
+        2) Opens the copied workbook and appends all sheets from $PWD\scratch\cat_map.xlsx
+        3) Saves the updated workbook to $PWD\scratch\VMsToUpdate-PROD.xlsx
         4) Closes all files and quits Excel
 
 Requires: Windows with Excel installed (uses COM interop). Run with PowerShell 7 (pwsh).
@@ -32,6 +32,10 @@ Requires: Windows with Excel installed (uses COM interop). Run with PowerShell 7
     before deploying to production systems.
 #>
 
+param(
+    [switch]$Reset
+)
+
 try {
     $root = $PWD
     $skelPath = Join-Path $root 'files\VMsToUpdate_SKEL.xlsx'
@@ -42,30 +46,40 @@ try {
     if (-not (Test-Path $mapPath)) { throw "Mapping workbook not found: $mapPath" }
     if (-not (Test-Path $outDir)) { New-Item -Path $outDir -ItemType Directory -Force | Out-Null }
 
-    $ts = (Get-Date).ToString('yyyy-MM-dd-HH-mm')
-    #$outFile = "VMsToUpdate-$ts.xlsx"
     $outFile = "VMsToUpdate-PROD.xlsx"
     $outPath = Join-Path $outDir $outFile
 
     Write-Host "Starting workbook consolidation..."
+    Write-Host "Preparing destination workbook copy..."
+    if (Test-Path $outPath) { try { Remove-Item -Path $outPath -Force -ErrorAction Stop } catch { Write-Warning "Failed to remove existing output: $($_.Exception.Message)" } }
+    Copy-Item -Path $skelPath -Destination $outPath -Force
+
     Write-Host "Opening Excel (COM)..."
     $excel = New-Object -ComObject Excel.Application
     $excel.Visible = $false
     $excel.DisplayAlerts = $false
 
-    Write-Host "Opening destination workbook: $skelPath"
-    $wbDest = $excel.Workbooks.Open($skelPath)
+    Write-Host "Opening destination workbook: $outPath"
+    $wbDest = $excel.Workbooks.Open($outPath)
 
     Write-Host "Opening source workbook to add: $mapPath"
     $wbSrc = $excel.Workbooks.Open($mapPath)
 
     $count = $wbSrc.Worksheets.Count
-    Write-Host "Copying $count worksheet(s) from cat_map into destination workbook..."
+    Write-Host "Copying $count worksheet(s) from cat_map into destination workbook (replacing by name)..."
 
     $missing = [System.Type]::Missing
     for ($i = 1; $i -le $count; $i++) {
         $ws = $wbSrc.Worksheets.Item($i)
         try {
+            # If a sheet with the same name already exists in destination, delete it first
+            $existing = $null
+            try { $existing = $wbDest.Worksheets.Item($ws.Name) } catch { $existing = $null }
+            if ($existing) {
+                try { $existing.Delete() } catch { Write-Warning "Failed to delete existing destination sheet '$($ws.Name)': $($_.Exception.Message)" }
+                finally { if ($existing) { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($existing) | Out-Null }; $existing=$null }
+            }
+
             $lastIndex = $wbDest.Worksheets.Count
             if ($lastIndex -ge 1) {
                 $after = $wbDest.Worksheets.Item($lastIndex)
@@ -148,7 +162,7 @@ try {
     }
 
     Write-Host "Saving updated workbook to: $outPath"
-    $wbDest.SaveAs($outPath, 51)
+    try { $wbDest.Save() } catch { Write-Warning "Save failed, attempting SaveAs: $($_.Exception.Message)"; try { $wbDest.SaveAs($outPath, 51) } catch { Write-Error "SaveAs failed: $($_.Exception.Message)" } }
 
     Write-Host "Closing workbooks..."
     if ($wbSrc) { $wbSrc.Close($false) }
