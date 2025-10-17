@@ -29,13 +29,56 @@ function Normalize {
     if ($IgnoreCase) { return $s.ToLowerInvariant() } else { return $s }
 }
 
-# --- Load data tables using Import-Excel (faster for reading) ---
+# --- Load data tables ---
+# ToUpdate can be read via Import-Excel (no duplicate headers by case expected)
+try { $toUpdateData = Import-Excel -Path $Workbook -Worksheet 'ToUpdate' }
+catch { Write-Error "Failed to read 'ToUpdate' sheet: $($_.Exception.Message)"; exit 2 }
+
+# VMCategories and AllCategories are read by cell to preserve header case and avoid collisions
+function Read-WorksheetRows {
+    param([string]$Path,[string]$Worksheet)
+    try { $pkg = Open-ExcelPackage -Path $Path -ErrorAction Stop } catch { throw }
+    try {
+        $ws = $pkg.Workbook.Worksheets[$Worksheet]
+        if (-not $ws) { throw "Worksheet not found: $Worksheet" }
+        if (-not $ws.Dimension) { return @{ Headers=@(); Rows=@() } }
+        $endRow = $ws.Dimension.End.Row
+        $endCol = $ws.Dimension.End.Column
+        $headers = for ($c=1;$c -le $endCol;$c++){ [string]$ws.Cells[1,$c].Text }
+        $rows = @()
+        for ($r=2;$r -le $endRow;$r++) {
+            $vals = New-Object string[] $endCol
+            for ($c=1;$c -le $endCol;$c++){ $vals[$c-1] = [string]$ws.Cells[$r,$c].Text }
+            $rows += ,$vals
+        }
+        return @{ Headers=$headers; Rows=$rows }
+    } finally { try { if ($pkg) { Close-ExcelPackage $pkg } } catch { } }
+}
+
 try {
-    $toUpdateData   = Import-Excel -Path $Workbook -Worksheet 'ToUpdate'
-    $vmCatData      = Import-Excel -Path $Workbook -Worksheet 'VMCategories'
-    $allCatData     = Import-Excel -Path $Workbook -Worksheet 'AllCategories'
-} catch {
-    Write-Error "Failed to read required sheets: $($_.Exception.Message)"; exit 2 }
+    $vmSheet  = Read-WorksheetRows -Path $Workbook -Worksheet 'VMCategories'
+    $allSheet = Read-WorksheetRows -Path $Workbook -Worksheet 'AllCategories'
+} catch { Write-Error "Failed to read required sheets: $($_.Exception.Message)"; exit 2 }
+
+# Build objects from VMCategories (only VM Name and VM extId)
+$idxVmName = [Array]::IndexOf($vmSheet.Headers,'VM Name')
+$idxVmExt  = [Array]::IndexOf($vmSheet.Headers,'VM extId')
+if ($idxVmName -lt 0 -or $idxVmExt -lt 0) { Write-Error "Missing 'VM Name' or 'VM extId' in VMCategories"; exit 2 }
+$vmCatData = foreach ($row in $vmSheet.Rows) {
+    [PSCustomObject]@{ 'VM Name' = $row[$idxVmName]; 'VM extId' = $row[$idxVmExt] }
+}
+
+# Build objects from AllCategories (Category, Value, optional extID/extId)
+$idxCat    = [Array]::IndexOf($allSheet.Headers,'Category')
+$idxVal    = [Array]::IndexOf($allSheet.Headers,'Value')
+$idxExtID  = [Array]::IndexOf($allSheet.Headers,'extID')
+if ($idxExtID -lt 0) { $idxExtID = [Array]::IndexOf($allSheet.Headers,'extId') }
+if ($idxCat -lt 0 -or $idxVal -lt 0) { Write-Error "Missing 'Category' or 'Value' in AllCategories"; exit 2 }
+$allCatData = foreach ($row in $allSheet.Rows) {
+    $o = [ordered]@{ Category = $row[$idxCat]; Value = $row[$idxVal] }
+    if ($idxExtID -ge 0) { $o['extID'] = $row[$idxExtID] }
+    [PSCustomObject]$o
+}
 
 $requiredColsToUpdate = 'VM Name','VM extId','UPDATE WITH CATEGORIES'
 foreach ($c in $requiredColsToUpdate) { if (-not ($toUpdateData | Get-Member -Name $c -MemberType NoteProperty)) { Write-Error "Missing column '$c' in ToUpdate"; exit 2 } }
