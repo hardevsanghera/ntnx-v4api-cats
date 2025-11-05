@@ -46,29 +46,60 @@ $baseUrl = $vars['baseUrl']
 $username = $vars['username']
 $password = $vars['password']
 
-$uri = "$baseUrl/vmm/v4.1/ahv/config/vms?$limit=50"
-
 # --- Create the Basic Authentication Header ---
 $base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($username):$($password)"))
 $headers = @{
     Authorization = "Basic $base64AuthInfo"
 }
 
-# --- Make the REST API Call ---
+# --- Make the REST API Call with Pagination ---
 try {
-    Write-Host "Calling API at URI: $uri" -ForegroundColor Cyan
+    $pageSize = 100  # Maximum allowed by the API
+    $pageNumber = 0
+    $allVMs = @()
+    $hasMorePages = $true
 
-    $response = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -SkipCertificateCheck -SkipHttpErrorCheck
+    while ($hasMorePages) {
+        $uri = "$baseUrl/vmm/v4.1/ahv/config/vms?`$limit=$pageSize&`$page=$pageNumber"
+        Write-Host "Calling API at URI: $uri (Page $pageNumber)" -ForegroundColor Cyan
 
-    if ($response) {
-        Write-Host "Successfully received response." -ForegroundColor Green
+        $response = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -SkipCertificateCheck -SkipHttpErrorCheck
+
+        if ($response -and $response.data) {
+            $currentPageVMs = $response.data
+            $vmCount = ($currentPageVMs | Measure-Object).Count
+            Write-Host "Retrieved $vmCount VMs from page $pageNumber" -ForegroundColor Green
+            
+            $allVMs += $currentPageVMs
+            
+            # Check if there are more pages
+            if ($vmCount -lt $pageSize) {
+                $hasMorePages = $false
+                Write-Host "Reached last page. Total VMs retrieved: $($allVMs.Count)" -ForegroundColor Yellow
+            } else {
+                $pageNumber++
+            }
+        } else {
+            Write-Host "No more data returned. Total VMs retrieved: $($allVMs.Count)" -ForegroundColor Yellow
+            $hasMorePages = $false
+        }
+    }
+
+    if ($allVMs.Count -gt 0) {
+        Write-Host "Successfully retrieved all $($allVMs.Count) VMs." -ForegroundColor Green
 
         $vmFile = Join-Path -Path $PWD -ChildPath '\scratch\vm_list.json'
 
-        # Always save the latest API response to vm_list.json (overwrite)
+        # Create a combined response object to save
+        $combinedResponse = @{
+            data = $allVMs
+            totalCount = $allVMs.Count
+        }
+
+        # Save the combined API response to vm_list.json (overwrite)
         try {
-            $response | ConvertTo-Json -Depth 10 | Out-File -FilePath $vmFile -Encoding utf8 -Force
-            Write-Host "Saved API response to $vmFile" -ForegroundColor Yellow
+            $combinedResponse | ConvertTo-Json -Depth 10 | Out-File -FilePath $vmFile -Encoding utf8 -Force
+            Write-Host "Saved all VMs to $vmFile" -ForegroundColor Yellow
         } catch {
             Write-Error "Failed to write $vmFile :"
             exit 1
